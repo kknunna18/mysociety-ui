@@ -42,7 +42,8 @@ All variables are optional; see `.env.example`.
 | Variable                  | Default                     | Purpose                                          |
 | ------------------------- | --------------------------- | ------------------------------------------------ |
 | `VITE_API_BASE_URL`       | `http://localhost:8080/api` | Backend base URL (used when the mock API is off) |
-| `VITE_USE_MOCK_API`       | `true`                      | Set to `false` to call the real backend          |
+| `VITE_API_PROXY_TARGET`   | `http://localhost:8080`     | Vite development proxy target                  |
+| `VITE_USE_MOCK_API`       | `false`                     | Set to `true` to use the in-memory mock API     |
 | `VITE_DEFAULT_SOCIETY_ID` | `green-valley`              | Sent as the `X-Society-Id` tenant header         |
 | `VITE_MOCK_LATENCY_MS`    | `150`                       | Simulated latency for the mock API               |
 
@@ -78,7 +79,8 @@ mysociety-frontend/
 - The mock API keeps a mutable in-memory store seeded from `mocks/data.ts`, enforces business rules
   (no duplicate active resident per unit, no paying an already-paid invoice, no double-booked
   facility slot) and appends to an audit log. `resetMockDb()` restores the seed between tests.
-- `AuthProvider` persists the session in `localStorage`; `ProtectedRoute` redirects anonymous users
+- `AuthProvider` persists the session in `localStorage`; `authService` owns token operations and
+  `ProtectedRoute` redirects anonymous users
   to `/login` and blocks routes whose `roles` do not include the signed-in user's role (`/audit` is
   admin/committee only).
 - `useAsync` handles the loading/error/reload lifecycle; `AsyncBoundary` renders those states.
@@ -98,6 +100,12 @@ GET    /audit
 ```
 
 Every request carries `X-Society-Id` and, once signed in, `Authorization: Bearer <token>`.
+
+In development, `/api` is proxied by Vite to `VITE_API_PROXY_TARGET`. Production calls use
+`VITE_API_BASE_URL` directly, so the Spring Boot backend must allow the deployed frontend origin in
+its CORS configuration and allow the `Authorization` and `X-Society-Id` headers. If refresh tokens
+are added later as cookies, enable Axios credentials and configure Spring Boot for credentialed CORS
+with an explicit allowed origin.
 
 ## Tests
 

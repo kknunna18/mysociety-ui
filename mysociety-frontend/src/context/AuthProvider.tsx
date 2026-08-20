@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { api } from '@/api/client';
-import { clearToken, setToken } from '@/api/http';
+import { authUnauthorizedEvent } from '@/api/axiosClient';
+import { login as loginUser, logout as logoutUser } from '@/services/authService';
 import { AuthContext, type AuthContextValue } from '@/context/authContext';
 import type { User } from '@/types';
 
-const USER_KEY = 'mysociety.user';
+export const USER_KEY = 'mysociety.user';
 
 const readStoredUser = (): User | null => {
   try {
@@ -19,16 +19,22 @@ const readStoredUser = (): User | null => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(readStoredUser);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const session = await api.login(email, password);
-    setToken(session.token);
-    window.localStorage.setItem(USER_KEY, JSON.stringify(session.user));
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      window.localStorage.removeItem(USER_KEY);
+      setUser(null);
+    };
+    window.addEventListener(authUnauthorizedEvent, handleUnauthorized);
+    return () => window.removeEventListener(authUnauthorizedEvent, handleUnauthorized);
+  }, []);
+
+  const login = useCallback(async (username: string, password: string) => {
+    const session = await loginUser(username, password);
     setUser(session.user);
   }, []);
 
   const logout = useCallback(() => {
-    clearToken();
-    window.localStorage.removeItem(USER_KEY);
+    logoutUser();
     setUser(null);
   }, []);
 

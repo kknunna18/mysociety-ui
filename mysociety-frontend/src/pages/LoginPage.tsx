@@ -6,7 +6,7 @@ export default function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('admin@mysociety.test');
+  const [username, setUsername] = useState('admin@mysociety.test');
   const [password, setPassword] = useState('admin123');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +20,7 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await login(email, password);
+      await login(username, password);
       const from = (location.state as { from?: string } | null)?.from ?? '/';
       navigate(from, { replace: true });
     } catch (cause) {
@@ -37,13 +37,13 @@ export default function LoginPage() {
         <p className="muted">Society management for residents, committees and security.</p>
 
         <div>
-          <label htmlFor="email">Email</label>
+          <label htmlFor="username">Username</label>
           <input
-            id="email"
-            type="email"
-            value={email}
+            id="username"
+            type="text"
+            value={username}
             autoComplete="username"
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => setUsername(event.target.value)}
             required
           />
         </div>

@@ -1,37 +1,35 @@
 import { ApiError } from '@/types';
-
-const baseUrl = (): string =>
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080/api';
+import { axiosClient } from '@/api/axiosClient';
+import { clearToken, getToken, setToken } from '@/api/tokenStorage';
 
 const societyId = (): string =>
   (import.meta.env.VITE_DEFAULT_SOCIETY_ID as string | undefined) ?? 'green-valley';
 
-const TOKEN_KEY = 'mysociety.token';
-
-export const getToken = (): string | null => window.localStorage.getItem(TOKEN_KEY);
-export const setToken = (token: string): void => window.localStorage.setItem(TOKEN_KEY, token);
-export const clearToken = (): void => window.localStorage.removeItem(TOKEN_KEY);
+export { clearToken, getToken, setToken };
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const response = await fetch(`${baseUrl()}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
+  try {
+    const headers: Record<string, string> = {
       'X-Society-Id': societyId(),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new ApiError(response.status, message || response.statusText);
+      ...(init.headers as Record<string, string> | undefined),
+    };
+    const response = await axiosClient.request<T>({
+      url: path,
+      method: init.method,
+      data: init.body ? JSON.parse(init.body as string) : undefined,
+      headers,
+    });
+    return response.data;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    const response = (error as { response?: { status?: number; data?: unknown; statusText?: string } })
+      .response;
+    const message =
+      typeof response?.data === 'string'
+        ? response.data
+        : response?.data && typeof response.data === 'object' && 'message' in response.data
+          ? String(response.data.message)
+          : response?.statusText || 'Request failed';
+    throw new ApiError(response?.status || 0, message);
   }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
 }

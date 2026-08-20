@@ -56,7 +56,8 @@ const httpApi: ApiClient = {
   listAudit: () => request<AuditEntry[]>('/audit'),
 };
 
-export const isMockApiEnabled = (): boolean => import.meta.env.VITE_USE_MOCK_API !== 'false';
+export const isMockApiEnabled = (): boolean =>
+  import.meta.env.VITE_USE_MOCK_API === 'true' || import.meta.env.MODE === 'test';
 
 export const api: ApiClient = new Proxy({} as ApiClient, {
   get(_target, property: keyof ApiClient) {
