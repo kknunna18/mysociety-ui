@@ -14,6 +14,9 @@ export interface User {
   role: Role;
   societyId: string;
   unit?: string;
+  mobileNumber?: string;
+  status?: string;
+  entitlements?: string[];
 }
 
 export interface Session {

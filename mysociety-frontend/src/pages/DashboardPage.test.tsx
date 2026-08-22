@@ -10,8 +10,9 @@ describe('DashboardPage', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(/loading/i);
 
-    expect(await screen.findByText('Active residents')).toBeInTheDocument();
-    expect(screen.getByText('Open complaints').nextSibling).toHaveTextContent('2');
-    expect(screen.getByText('Outstanding dues').nextSibling).toHaveTextContent('11,500');
+    expect(await screen.findByText('Visitors today')).toBeInTheDocument();
+    expect(screen.getAllByText('2', { selector: '.summary-card__value' })[0]).toBeInTheDocument();
+    expect(screen.getByText('₹11,500', { selector: '.summary-card__value' })).toBeInTheDocument();
+    expect(screen.getByText(/No announcements have been published/)).toBeInTheDocument();
   });
 });
