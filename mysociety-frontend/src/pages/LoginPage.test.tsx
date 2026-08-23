@@ -22,7 +22,7 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
     });
-    expect(window.localStorage.getItem('mysociety.token')).toContain('usr-admin');
+    expect(window.localStorage.getItem('mysociety.token')).toBeNull();
   });
 
   it('shows an error for invalid credentials', async () => {
@@ -33,6 +33,6 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'wrong-password');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/invalid email or password/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to sign in/i);
   });
 });

@@ -72,6 +72,22 @@ describe('axiosClient authentication', () => {
     expect(requestConfig?.headers.get('Authorization')).toBeUndefined();
   });
 
+  it('adds the bearer header to identity-proxied protected endpoints', async () => {
+    setToken('test-token');
+    let requestConfig: InternalAxiosRequestConfig | undefined;
+    const adapter: AxiosAdapter = async (config) => {
+      requestConfig = config;
+      return responseFor(config);
+    };
+    axiosClient.defaults.adapter = adapter;
+
+    await axiosClient.get(
+      `${window.location.origin}/identity/api/v1/societies/society-1/residents`
+    );
+
+    expect(requestConfig?.headers.get('Authorization')).toBe('Bearer test-token');
+  });
+
   it('clears the token after an authenticated 401 response', async () => {
     setToken('expired-token');
     window.history.replaceState({}, '', '/login');

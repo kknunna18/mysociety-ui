@@ -1310,6 +1310,86 @@ tbody tr:last-child td {
 }
 
 /* Residents management */
+.society-selection {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 4rem 2rem;
+  color: #172033;
+  background: #f5f7fa;
+  text-align: center;
+}
+
+.society-selection > h1 {
+  margin: 0;
+  font-size: 2.2rem;
+}
+
+.society-selection > p {
+  color: #667085;
+}
+
+.society-selection__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 1rem;
+  max-width: 1080px;
+  margin: 2rem auto;
+  text-align: left;
+}
+
+.society-selection__card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(15 27 51 / 6%);
+}
+
+.society-selection__card h2,
+.society-selection__card p {
+  margin: 0;
+}
+
+.society-selection__card h2 {
+  font-size: 1.1rem;
+}
+
+.society-selection__card button,
+.society-selection > button {
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  border: 1px solid #1f4e78;
+  border-radius: 7px;
+  color: #fff;
+  background: #1f4e78;
+  cursor: pointer;
+}
+
+.society-selection__empty {
+  grid-column: 1 / -1;
+  padding: 2rem;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .society-selection {
+    padding: 2rem 1rem;
+  }
+
+  .society-selection__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .society-selection__card button {
+    width: 100%;
+  }
+}
+
 .residents-page {
   display: grid;
   gap: 1rem;

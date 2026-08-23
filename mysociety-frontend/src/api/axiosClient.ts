@@ -4,6 +4,7 @@ import { clearToken, getToken } from '@/api/tokenStorage';
 const publicEndpoints = [
   '/auth/login',
   '/identity/api/auth/login',
+  '/identity/api/v1/auth/login',
   '/auth/register',
   '/auth/forgot-password',
   '/auth/refresh-token',
@@ -32,6 +33,7 @@ const isExternalUrl = (url: string | undefined): boolean => {
 
   try {
     const requestUrl = new URL(url);
+    if (requestUrl.origin === window.location.origin) return false;
     const configuredBase = new URL(
       (import.meta.env.VITE_API_BASE_URL as string | undefined) || window.location.origin,
       window.location.origin

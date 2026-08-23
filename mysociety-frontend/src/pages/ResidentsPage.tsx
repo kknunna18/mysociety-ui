@@ -1,482 +1,76 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { api } from '@/api/client';
+import { useEffect, useMemo, useState } from 'react';
+import { api, type GetResidentsParams } from '@/api/client';
 import { useAsync } from '@/hooks/useAsync';
-import { formatDate } from '@/utils/format';
 import { useAuth } from '@/hooks/useAuth';
-import type { Resident } from '@/types';
+import { formatDate } from '@/utils/format';
+import type { MembershipStatus, MembershipType, ResidentListItem, ResidentPageResponse } from '@/types';
 
-const PAGE_SIZE = 8;
-const FRIENDLY_ERROR = "We couldn't load residents";
-const FRIENDLY_ERROR_MESSAGE = 'Resident information is temporarily unavailable. Please try again.';
-type TypeFilter = 'all' | 'OWNER' | 'TENANT' | 'FAMILY';
-type StatusFilter = 'all' | 'active' | 'inactive' | 'pending';
+type SortField = 'fullName' | 'unitNumber' | 'membershipType' | 'status' | 'moveInDate';
+type Sort = `${SortField},asc` | `${SortField},desc`;
+const PAGE_SIZES = [10, 20, 50, 100];
+const MEMBERSHIP_LABELS: Record<MembershipType, string> = { OWNER: 'Owner', TENANT: 'Tenant', FAMILY_MEMBER: 'Family member', OTHER_OCCUPANT: 'Other occupant' };
+const STATUS_LABELS: Record<MembershipStatus, string> = { ACTIVE: 'Active', INVITED: 'Invited', PENDING_VERIFICATION: 'Pending verification', PENDING_APPROVAL: 'Pending approval', REJECTED: 'Rejected', INACTIVE: 'Inactive', MOVED_OUT: 'Moved out' };
 
-const initials = (name: string): string =>
-  name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+const initials = (name: string): string => { const parts = name.trim().split(/\s+/).filter(Boolean); return (parts.length ? `${parts[0][0]}${parts.length > 1 ? parts[parts.length - 1][0] : ''}` : '?').toUpperCase(); };
+const provided = (value: string | null): string => value?.trim() || 'Not provided';
+const statusClass = (status: MembershipStatus): string => status === 'ACTIVE' ? 'resident-status--active' : status === 'REJECTED' ? 'resident-status--rejected' : ['INACTIVE', 'MOVED_OUT'].includes(status) ? 'resident-status--inactive' : 'resident-status--pending';
 
-function safeErrorMessage(cause: unknown): string {
-  if (!(cause instanceof Error)) return FRIENDLY_ERROR_MESSAGE;
-  return /html|doctype|404|not found/i.test(cause.message)
-    ? FRIENDLY_ERROR_MESSAGE
-    : FRIENDLY_ERROR_MESSAGE;
-}
-
-function ResidentStatus({ active }: { active: boolean }) {
-  return (
-    <span className={`resident-status resident-status--${active ? 'active' : 'inactive'}`}>
-      <i aria-hidden="true" />
-      {active ? 'Active' : 'Inactive'}
-    </span>
-  );
-}
-
-function ResidentIdentity({ resident }: { resident: Resident }) {
-  return (
-    <div className="resident-identity">
-      <span className="resident-avatar" aria-hidden="true">
-        {initials(resident.name)}
-      </span>
-      <span>
-        <strong>{resident.name}</strong>
-        <small>{resident.email}</small>
-      </span>
-    </div>
-  );
-}
+function ResidentStatus({ status }: { status: MembershipStatus }) { return <span className={`resident-status ${statusClass(status)}`}><i aria-hidden="true" />{STATUS_LABELS[status]}</span>; }
+function Identity({ resident }: { resident: ResidentListItem }) { return <div className="resident-identity">{resident.avatarUrl ? <img className="resident-avatar" src={resident.avatarUrl} alt={`${resident.fullName} profile`} /> : <span className="resident-avatar" aria-hidden="true">{initials(resident.fullName)}</span>}<span><strong>{resident.fullName.trim() || 'Unknown resident'}</strong>{resident.primaryMember ? <small>Primary</small> : null}</span></div>; }
 
 export default function ResidentsPage() {
   const { user } = useAuth();
+  const societyId = user?.societyId;
   const canManageResidents = user?.role === 'ADMIN' || user?.role === 'COMMITTEE';
-  const [draftQuery, setDraftQuery] = useState('');
-  const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [page, setPage] = useState(1);
+  const [draftSearch, setDraftSearch] = useState('');
+  const [search, setSearch] = useState('');
+  const [blockId, setBlockId] = useState('');
+  const [unitId, setUnitId] = useState('');
+  const [membershipType, setMembershipType] = useState<MembershipType | ''>('');
+  const [status, setStatus] = useState<MembershipStatus | ''>('VERIFIED' as MembershipStatus | '');
+  const [sort, setSort] = useState<Sort>('fullName,asc');
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(20);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ name: '', unit: '', email: '', phone: '' });
   const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const firstInvalidRef = useRef<HTMLInputElement>(null);
-  const addButtonRef = useRef<HTMLButtonElement>(null);
-  const { data, error, loading, reload } = useAsync<Resident[]>(
-    () => api.listResidents(query),
-    [query]
-  );
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(draftQuery.trim()), 400);
-    return () => window.clearTimeout(timer);
-  }, [draftQuery]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [query, typeFilter, statusFilter]);
-
-  useEffect(() => {
-    if (!dialogOpen) {
-      addButtonRef.current?.focus();
-      return undefined;
-    }
-    firstInvalidRef.current?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setDialogOpen(false);
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [dialogOpen]);
-
-  const handleAdd = async (event: React.FormEvent) => {
+  useEffect(() => { const timer = window.setTimeout(() => { setSearch(draftSearch.trim()); setPage(0); }, 400); return () => window.clearTimeout(timer); }, [draftSearch]);
+  useEffect(() => { setPage(0); }, [blockId, unitId, membershipType, status, sort, societyId]);
+  useEffect(() => { setBlockId(''); setUnitId(''); }, [societyId]);
+  const params: GetResidentsParams | null = societyId ? { societyId, page, size, search, blockId: blockId || undefined, unitId: unitId || undefined, membershipType: membershipType || undefined, status: status || undefined, sort } : null;
+  const { data, error, loading, reload } = useAsync<ResidentPageResponse>(() => api.getResidents(params as GetResidentsParams), [params?.societyId, params?.page, params?.size, params?.search, params?.blockId, params?.unitId, params?.membershipType, params?.status, params?.sort]);
+  const scopedData = data && data.items.every((resident) => resident.societyId === societyId) ? data : null;
+  const residents = useMemo(() => scopedData?.items ?? [], [scopedData]);
+  const blocks = useMemo(() => Array.from(new Map(residents.filter((resident) => resident.block).map((resident) => [resident.block?.id, resident.block])).values()), [residents]);
+  const units = residents.filter((resident) => resident.block?.id === blockId);
+  const filtersActive = Boolean(search || blockId || unitId || membershipType || status !== 'ACTIVE');
+  const errorMessage = error?.includes('403') ? 'You do not have permission to view residents.' : error?.includes('404') ? 'The selected society could not be found.' : error?.includes('400') ? 'Some filters are invalid. Clear the filters and try again.' : 'Resident information is temporarily unavailable. Please try again.';
+  const clearFilters = () => { setDraftSearch(''); setSearch(''); setBlockId(''); setUnitId(''); setMembershipType(''); setStatus('ACTIVE'); setPage(0); };
+  const sortColumn = (field: SortField) => { const direction = sort.startsWith(`${field},`) && sort.endsWith(',asc') ? 'desc' : 'asc'; setSort(`${field},${direction}`); };
+  const resetUnitIfNeeded = (nextBlock: string) => { setBlockId(nextBlock); setUnitId(''); };
+  const submitAdd = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (
-      !form.name.trim() ||
-      !form.unit.trim() ||
-      !form.email.trim() ||
-      !/^\+?[0-9 ()-]{7,}$/.test(form.phone)
-    ) {
-      setFormError('Enter a name, unit, valid email and valid mobile number.');
-      firstInvalidRef.current?.focus();
-      return;
-    }
-    setSaving(true);
+    if (!form.name.trim() || !form.unit.trim() || !form.email.trim() || !/^\+?[0-9 ()-]{7,}$/.test(form.phone)) { setFormError('Enter a name, unit, valid email and valid mobile number.'); return; }
     setFormError(null);
-    try {
-      await api.createResident({
-        ...form,
-        ownership: 'OWNER',
-        moveInDate: new Date().toISOString().slice(0, 10),
-        active: true,
-      });
-      setForm({ name: '', unit: '', email: '', phone: '' });
-      setDialogOpen(false);
-      setSuccess('Resident added successfully.');
-      reload();
-    } catch (cause) {
-      setFormError(safeErrorMessage(cause));
-    } finally {
-      setSaving(false);
-    }
+    try { await api.createResident({ ...form, ownership: 'OWNER', moveInDate: new Date().toISOString().slice(0, 10), active: true }); setForm({ name: '', unit: '', email: '', phone: '' }); setDialogOpen(false); reload(); } catch { setFormError('Resident information is temporarily unavailable. Please try again.'); }
   };
 
-  const residents = useMemo(
-    () =>
-      (data ?? []).filter((resident) => {
-        const typeMatches =
-          typeFilter === 'all' ||
-          (typeFilter === 'FAMILY' ? false : resident.ownership === typeFilter);
-        const statusMatches =
-          statusFilter === 'all' ||
-          (statusFilter === 'active'
-            ? resident.active
-            : statusFilter === 'inactive'
-              ? !resident.active
-              : false);
-        return typeMatches && statusMatches;
-      }),
-    [data, statusFilter, typeFilter]
-  );
-  const totalPages = Math.max(1, Math.ceil(residents.length / PAGE_SIZE));
-  const visibleResidents = residents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const filtersActive = Boolean(draftQuery || typeFilter !== 'all' || statusFilter !== 'all');
-  const clearFilters = () => {
-    setDraftQuery('');
-    setQuery('');
-    setTypeFilter('all');
-    setStatusFilter('all');
-  };
-
-  return (
-    <div className="residents-page">
-      <header className="residents-header">
-        <div>
-          <h1>Residents</h1>
-          <p>Manage owners, tenants and household members in your society.</p>
-        </div>
-        {canManageResidents ? (
-          <button
-            ref={addButtonRef}
-            className="primary"
-            type="button"
-            onClick={() => {
-              setSuccess('');
-              setFormError(null);
-              setDialogOpen(true);
-            }}
-          >
-            + Add resident
-          </button>
-        ) : null}
-      </header>
-      {success ? (
-        <p className="residents-success" role="status" aria-live="polite">
-          {success}
-        </p>
-      ) : null}
-      <section className="resident-summary" aria-label="Resident summary">
-        <div>
-          <span>Total residents</span>
-          <strong>{data?.length ?? 0}</strong>
-        </div>
-        <div>
-          <span>Owners</span>
-          <strong>{data?.filter((resident) => resident.ownership === 'OWNER').length ?? 0}</strong>
-        </div>
-        <div>
-          <span>Tenants</span>
-          <strong>{data?.filter((resident) => resident.ownership === 'TENANT').length ?? 0}</strong>
-        </div>
-        <div>
-          <span>Occupied units</span>
-          <strong>{data?.filter((resident) => resident.active).length ?? 0}</strong>
-        </div>
-      </section>
-      <section className="resident-toolbar" aria-label="Resident filters">
-        <label className="resident-search">
-          <span aria-hidden="true">⌕</span>
-          <input
-            id="resident-search"
-            placeholder="Search by name, unit, email or phone"
-            value={draftQuery}
-            onChange={(event) => setDraftQuery(event.target.value)}
-          />
-          <span className="sr-label">Search residents</span>
-        </label>
-        <select
-          aria-label="Occupancy type"
-          value={typeFilter}
-          onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
-        >
-          <option value="all">All types</option>
-          <option value="OWNER">Owner</option>
-          <option value="TENANT">Tenant</option>
-          <option value="FAMILY">Family member</option>
-        </select>
-        <select
-          aria-label="Resident status"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-        >
-          <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="pending">Pending</option>
-        </select>
-        {filtersActive ? (
-          <button type="button" onClick={clearFilters}>
-            Clear filters
-          </button>
-        ) : null}
-        <button
-          className="resident-refresh"
-          type="button"
-          aria-label="Refresh residents"
-          disabled={loading}
-          onClick={reload}
-        >
-          ↻
-        </button>
-      </section>
-      {error ? (
-        <div className="resident-error" role="alert" aria-live="assertive">
-          <span aria-hidden="true">!</span>
-          <div>
-            <strong>{FRIENDLY_ERROR}</strong>
-            <p>{FRIENDLY_ERROR_MESSAGE}</p>
-            <button type="button" onClick={reload}>
-              Retry
-            </button>
-            {filtersActive ? (
-              <button type="button" onClick={clearFilters}>
-                Clear filters
-              </button>
-            ) : null}
-          </div>
-        </div>
-      ) : loading ? (
-        <div className="resident-table-shell" role="status" aria-live="polite">
-          <span className="sr-only">Loading residents...</span>
-          {[1, 2, 3, 4].map((item) => (
-            <div className="resident-skeleton" key={item} />
-          ))}
-        </div>
-      ) : visibleResidents.length === 0 ? (
-        <div className="resident-empty" role="status">
-          <strong>
-            {filtersActive ? 'No residents match your search.' : 'No residents found'}
-          </strong>
-          <p>
-            {filtersActive
-              ? 'Try changing your filters.'
-              : 'Try changing your filters or add the first resident.'}
-          </p>
-          {filtersActive ? (
-            <button type="button" onClick={clearFilters}>
-              Clear filters
-            </button>
-          ) : null}
-        </div>
-      ) : (
-        <>
-          <div className="resident-table-shell">
-            <table className="residents-table">
-              <caption className="sr-only">Residents in Green Valley Apartments</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Resident</th>
-                  <th scope="col">Unit</th>
-                  <th scope="col">Membership</th>
-                  <th scope="col">Contact</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Joined date</th>
-                  <th scope="col">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleResidents.map((resident) => (
-                  <tr key={resident.id}>
-                    <td>
-                      <ResidentIdentity resident={resident} />
-                    </td>
-                    <td>
-                      <strong>{resident.unit}</strong>
-                    </td>
-                    <td>
-                      <span className="membership-chip">
-                        {resident.ownership === 'OWNER' ? 'Owner' : 'Tenant'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="contact-cell">
-                        {resident.email}
-                        <small>{resident.phone}</small>
-                      </span>
-                    </td>
-                    <td>
-                      <ResidentStatus active={resident.active} />
-                    </td>
-                    <td>{formatDate(resident.moveInDate)}</td>
-                    <td>
-                      <Link className="resident-view" to={`/residents#${resident.id}`}>
-                        View details
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {visibleResidents.map((resident) => (
-              <article className="resident-mobile-card" key={`mobile-${resident.id}`}>
-                <ResidentIdentity resident={resident} />
-                <div>
-                  <span>Unit</span>
-                  <strong>{resident.unit}</strong>
-                </div>
-                <div>
-                  <span>Membership</span>
-                  <strong>{resident.ownership === 'OWNER' ? 'Owner' : 'Tenant'}</strong>
-                </div>
-                <div>
-                  <span>Contact</span>
-                  <strong>{resident.phone}</strong>
-                </div>
-                <ResidentStatus active={resident.active} />
-                <Link className="resident-view" to={`/residents#${resident.id}`}>
-                  View details
-                </Link>
-              </article>
-            ))}
-          </div>
-          <footer className="resident-pagination">
-            <span>
-              Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, residents.length)} of{' '}
-              {residents.length}
-            </span>
-            <div>
-              <button
-                type="button"
-                aria-label="Previous page"
-                disabled={page === 1}
-                onClick={() => setPage((value) => value - 1)}
-              >
-                ←
-              </button>
-              <span>
-                Page {page} of {totalPages}
-              </span>
-              <button
-                type="button"
-                aria-label="Next page"
-                disabled={page === totalPages}
-                onClick={() => setPage((value) => value + 1)}
-              >
-                →
-              </button>
-            </div>
-          </footer>
-        </>
-      )}
-      {dialogOpen && canManageResidents ? (
-        <div
-          className="resident-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setDialogOpen(false);
-          }}
-        >
-          <section
-            className="resident-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="add-resident-title"
-          >
-            <div className="resident-dialog__header">
-              <div>
-                <h2 id="add-resident-title">Add resident</h2>
-                <p>Add a new household member to your society.</p>
-              </div>
-              <button
-                type="button"
-                aria-label="Close add resident dialog"
-                onClick={() => setDialogOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleAdd}>
-              <div className="resident-form-grid">
-                <div>
-                  <label htmlFor="resident-name">
-                    Full name <b>*</b>
-                  </label>
-                  <input
-                    ref={firstInvalidRef}
-                    id="resident-name"
-                    value={form.name}
-                    onChange={(event) => setForm({ ...form, name: event.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="resident-unit">
-                    Unit <b>*</b>
-                  </label>
-                  <input
-                    id="resident-unit"
-                    value={form.unit}
-                    onChange={(event) => setForm({ ...form, unit: event.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="resident-email">
-                    Email <b>*</b>
-                  </label>
-                  <input
-                    id="resident-email"
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => setForm({ ...form, email: event.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="resident-phone">
-                    Mobile number <b>*</b>
-                  </label>
-                  <input
-                    id="resident-phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              {formError ? (
-                <p className="state state--error" role="alert">
-                  {formError}
-                </p>
-              ) : null}
-              <div className="resident-dialog__actions">
-                <button type="button" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </button>
-                <button className="primary" type="submit" disabled={saving}>
-                  {saving ? 'Adding resident...' : 'Add resident'}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
-    </div>
-  );
+  return <div className="residents-page">
+    <header className="residents-header"><div><h1>Residents</h1><p>Manage owners, tenants and household members in your society.</p></div>{canManageResidents ? <button className="primary" type="button" onClick={() => setDialogOpen(true)}>+ Add resident</button> : null}</header>
+    <p aria-live="polite">{scopedData ? `${scopedData.page.totalElements} residents` : ''}</p>
+    <section className="resident-toolbar" aria-label="Resident filters">
+      <label className="resident-search"><span aria-hidden="true">⌕</span><input aria-label="Search residents" placeholder="Search by name, unit, email or phone" value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} />{draftSearch ? <button type="button" aria-label="Clear search" onClick={() => { setDraftSearch(''); setSearch(''); }}>×</button> : null}</label>
+      <select aria-label="Block" value={blockId} onChange={(event) => resetUnitIfNeeded(event.target.value)}><option value="">All blocks</option>{blocks.map((block) => <option key={block?.id} value={block?.id}>{block?.name}</option>)}</select>
+      <select aria-label="Unit" disabled={!blockId} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">All units</option>{units.map((resident) => <option key={resident.unit.id} value={resident.unit.id}>{resident.unit.number}</option>)}</select>
+      <select aria-label="Membership type" value={membershipType} onChange={(event) => setMembershipType(event.target.value as MembershipType | '')}><option value="">All memberships</option>{Object.entries(MEMBERSHIP_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+      <select aria-label="Status" value={status} onChange={(event) => setStatus(event.target.value as MembershipStatus)}><option value="ACTIVE">Active</option><option value="">All statuses</option><option value="PENDING_APPROVAL">Pending approval</option><option value="INVITED">Invited</option><option value="INACTIVE">Inactive</option><option value="MOVED_OUT">Moved out</option><option value="REJECTED">Rejected</option></select>
+      {filtersActive ? <button type="button" onClick={clearFilters}>Clear filters</button> : null}<button className="resident-refresh" type="button" aria-label="Refresh residents" title="Refresh residents" disabled={loading} onClick={reload}>↻</button>
+    </section>
+    {error ? <div className="resident-error" role="alert" aria-live="assertive"><span aria-hidden="true">!</span><div><strong>We couldn’t load residents</strong><p>{errorMessage}</p><button type="button" onClick={reload}>Retry</button>{filtersActive ? <button type="button" onClick={clearFilters}>Clear filters</button> : null}</div></div> : loading && !scopedData ? <div className="resident-table-shell" role="status"><span className="sr-only">Loading residents...</span>{[1, 2, 3, 4].map((item) => <div className="resident-skeleton" key={item} />)}</div> : residents.length === 0 ? <div className="resident-empty" role="status"><strong>{filtersActive ? 'No residents match your search' : 'No residents found'}</strong><p>{filtersActive ? 'Try changing or clearing the selected filters.' : 'Residents will appear here after they are registered in this society.'}</p>{filtersActive ? <button type="button" onClick={clearFilters}>Clear filters</button> : null}</div> : <>
+      <div className="resident-table-shell">{loading ? <span className="resident-progress" role="status">Updating residents...</span> : null}<table className="residents-table"><caption className="sr-only">Residents</caption><thead><tr><th scope="col" aria-sort={sort.startsWith('fullName,') ? sort.endsWith(',asc') ? 'ascending' : 'descending' : 'none'}><button type="button" onClick={() => sortColumn('fullName')}>Resident</button></th><th scope="col" aria-sort={sort.startsWith('unitNumber,') ? sort.endsWith(',asc') ? 'ascending' : 'descending' : 'none'}><button type="button" onClick={() => sortColumn('unitNumber')}>Unit</button></th><th scope="col" aria-sort={sort.startsWith('membershipType,') ? sort.endsWith(',asc') ? 'ascending' : 'descending' : 'none'}><button type="button" onClick={() => sortColumn('membershipType')}>Membership</button></th><th scope="col">Contact</th><th scope="col" aria-sort={sort.startsWith('status,') ? sort.endsWith(',asc') ? 'ascending' : 'descending' : 'none'}><button type="button" onClick={() => sortColumn('status')}>Status</button></th><th scope="col" aria-sort={sort.startsWith('moveInDate,') ? sort.endsWith(',asc') ? 'ascending' : 'descending' : 'none'}><button type="button" onClick={() => sortColumn('moveInDate')}>Move-in date</button></th><th scope="col">Actions</th></tr></thead><tbody>{residents.map((resident) => <tr key={resident.membershipId}><td><Identity resident={resident} /></td><td><strong>{resident.block?.name || 'Block unavailable'}</strong><small>{resident.unit.number}</small></td><td><span className="membership-chip">{MEMBERSHIP_LABELS[resident.membershipType]}</span></td><td><span className="contact-cell">{provided(resident.email)}<small>{provided(resident.mobile)}</small></span></td><td><ResidentStatus status={resident.status} /></td><td>{resident.moveInDate ? formatDate(resident.moveInDate) : 'Not available'}</td><td /></tr>)}</tbody></table>{residents.map((resident) => <article className="resident-mobile-card" key={`mobile-${resident.membershipId}`}><Identity resident={resident}/><div><span>Unit</span><strong>{resident.block?.name || 'Block unavailable'}<small>{resident.unit.number}</small></strong></div><div><span>Membership</span><strong>{MEMBERSHIP_LABELS[resident.membershipType]}</strong></div><div><span>Contact</span><strong>{provided(resident.email)}<small>{provided(resident.mobile)}</small></strong></div><div><span>Move-in date</span><strong>{resident.moveInDate ? formatDate(resident.moveInDate) : 'Not available'}</strong></div><ResidentStatus status={resident.status}/></article>)}</div>
+      <footer className="resident-pagination"><span>Showing {data?.page.totalElements ? page * size + 1 : 0}-{Math.min((page + 1) * size, data?.page.totalElements ?? 0)} of {data?.page.totalElements ?? 0}</span><label>Rows <select aria-label="Page size" value={size} onChange={(event) => { setSize(Math.min(100, Number(event.target.value))); setPage(0); }}>{PAGE_SIZES.map((value) => <option key={value}>{value}</option>)}</select></label><div><button type="button" aria-label="Previous page" disabled={data?.page.first ?? true} onClick={() => setPage((value) => Math.max(0, value - 1))}>←</button><span>Page {page + 1} of {Math.max(1, data?.page.totalPages ?? 1)}</span><button type="button" aria-label="Next page" disabled={data?.page.last ?? true} onClick={() => setPage((value) => value + 1)}>→</button></div></footer>
+    </>}
+    {dialogOpen && canManageResidents ? <div className="resident-dialog-backdrop" role="presentation"><section className="resident-dialog" role="dialog" aria-modal="true" aria-labelledby="add-resident-title"><h2 id="add-resident-title">Add resident</h2><form onSubmit={submitAdd}><label htmlFor="resident-name">Full name *</label><input id="resident-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /><label htmlFor="resident-unit">Unit *</label><input id="resident-unit" value={form.unit} onChange={(event) => setForm({ ...form, unit: event.target.value })} /><label htmlFor="resident-email">Email *</label><input id="resident-email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /><label htmlFor="resident-phone">Mobile number *</label><input id="resident-phone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />{formError ? <p role="alert">{formError}</p> : null}<button type="button" onClick={() => setDialogOpen(false)}>Cancel</button><button className="primary" type="submit">Add resident</button></form></section></div> : null}
+  </div>;
 }

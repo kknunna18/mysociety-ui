@@ -15,7 +15,7 @@ const NAV = [
 ];
 
 export function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user, activeSociety, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -93,7 +93,7 @@ export function AppLayout() {
           </button>
           <div className="topbar__society">
             <span aria-hidden="true">▥</span>
-            <strong>Green Valley Apartments</strong>
+            <strong>{activeSociety?.name || 'MySociety'}</strong>
             <span aria-hidden="true">⌄</span>
           </div>
           <label className="topbar__search">

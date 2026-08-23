@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, status, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState('admin@mysociety.test');
@@ -13,6 +13,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberEmail, setRememberEmail] = useState(false);
 
+  if (status === 'selectingSociety') {
+    return <Navigate to="/select-society" replace />;
+  }
   if (user) {
     return <Navigate to="/" replace />;
   }
@@ -22,11 +25,15 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await login(username, password);
+      const response = await login(username, password);
+      if (response.status === 'SOCIETY_SELECTION_REQUIRED') {
+        navigate('/select-society', { replace: true });
+        return;
+      }
       const from = (location.state as { from?: string } | null)?.from ?? '/';
       navigate(from, { replace: true });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to sign in');
+    } catch {
+      setError('Unable to sign in. Please verify your credentials and try again.');
     } finally {
       setSubmitting(false);
     }

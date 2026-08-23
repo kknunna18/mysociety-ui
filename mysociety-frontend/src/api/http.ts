@@ -1,13 +1,15 @@
 import { ApiError } from '@/types';
 import { axiosClient } from '@/api/axiosClient';
-import { clearToken, getToken, setToken } from '@/api/tokenStorage';
+import { clearToken, getActiveSocietyId, getToken, setActiveSocietyId, setToken } from '@/api/tokenStorage';
 
-const societyId = (): string =>
-  (import.meta.env.VITE_DEFAULT_SOCIETY_ID as string | undefined) ?? 'green-valley';
+const societyId = (): string => getActiveSocietyId() ?? (import.meta.env.VITE_DEFAULT_SOCIETY_ID as string | undefined) ?? 'green-valley';
 
-export { clearToken, getToken, setToken };
+export { clearToken, getToken, setActiveSocietyId, setToken };
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(
+  path: string,
+  init: RequestInit & { query?: Record<string, unknown> } = {}
+): Promise<T> {
   try {
     const headers: Record<string, string> = {
       'X-Society-Id': societyId(),
@@ -17,6 +19,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
       url: path,
       method: init.method,
       data: init.body ? JSON.parse(init.body as string) : undefined,
+      params: init.query,
+      signal: init.signal ?? undefined,
       headers,
     });
     return response.data;

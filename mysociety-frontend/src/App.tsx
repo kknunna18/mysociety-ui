@@ -11,11 +11,13 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import PaymentsPage from '@/pages/PaymentsPage';
 import ResidentsPage from '@/pages/ResidentsPage';
 import VisitorsPage from '@/pages/VisitorsPage';
+import SelectSocietyPage from '@/pages/SelectSocietyPage';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/select-society" element={<SelectSocietyPage />} />
       <Route
         element={
           <ProtectedRoute>

@@ -24,6 +24,39 @@ export interface Session {
   user: User;
 }
 
+export interface ActiveSociety {
+  id: string;
+  code?: string;
+  name: string;
+  city?: string;
+  unitCount?: number;
+  unit?: string;
+  membershipType?: string;
+  roles?: string[];
+}
+
+export type AvailableSociety = ActiveSociety;
+export type AuthUser = User;
+
+export interface AuthenticatedLoginResponse {
+  status: 'AUTHENTICATED';
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresIn: number;
+  user: AuthUser;
+  activeSociety: ActiveSociety;
+}
+
+export interface SocietySelectionRequiredResponse {
+  status: 'SOCIETY_SELECTION_REQUIRED';
+  loginContextToken: string;
+  expiresIn: number;
+  user: { id: string; name: string };
+  societies: AvailableSociety[];
+}
+
+export type LoginResponse = AuthenticatedLoginResponse | SocietySelectionRequiredResponse;
+
 export interface Resident {
   id: string;
   societyId: string;
@@ -34,6 +67,47 @@ export interface Resident {
   ownership: 'OWNER' | 'TENANT';
   moveInDate: string;
   active: boolean;
+}
+
+export type MembershipType = 'OWNER' | 'TENANT' | 'FAMILY_MEMBER' | 'OTHER_OCCUPANT';
+
+export type MembershipStatus =
+  | 'INVITED'
+  | 'PENDING_VERIFICATION'
+  | 'PENDING_APPROVAL'
+  | 'ACTIVE'
+  | 'REJECTED'
+  | 'INACTIVE'
+  | 'MOVED_OUT';
+
+export interface ResidentListItem {
+  membershipId: string;
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  email: string | null;
+  mobile: string | null;
+  societyId: string;
+  block: { id: string; name: string } | null;
+  unit: { id: string; number: string };
+  membershipType: MembershipType;
+  primaryMember: boolean;
+  status: MembershipStatus;
+  moveInDate: string | null;
+}
+
+export interface ResidentPageMetadata {
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface ResidentPageResponse {
+  items: ResidentListItem[];
+  page: ResidentPageMetadata;
 }
 
 export type InvoiceStatus = 'PAID' | 'DUE' | 'OVERDUE';
