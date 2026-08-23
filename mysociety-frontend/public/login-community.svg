@@ -1,0 +1,40 @@
+<svg width="760" height="330" viewBox="0 0 760 330" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">MySociety apartment community</title>
+  <desc id="desc">A connected apartment community surrounded by trees and a garden.</desc>
+  <path d="M0 287C102 271 174 279 254 284C363 291 454 269 564 277C654 283 707 274 760 280V330H0V287Z" fill="#DDEEDC"/>
+  <path d="M0 309C94 293 170 301 252 306C373 313 478 289 590 298C662 304 714 294 760 299V330H0V309Z" fill="#B9D9B0"/>
+  <path d="M300 330L385 273L470 330H300Z" fill="#E8EEF3"/>
+  <path d="M384 284L407 330H361L384 284Z" fill="#CAD6DE"/>
+  <g stroke="#204D78" stroke-width="3">
+    <path d="M158 242V101H258V242" fill="#F4F8FB"/>
+    <path d="M179 101V72H237V101" fill="#D6E5F1"/>
+    <path d="M270 256V42H387V256" fill="#E7F0F6"/>
+    <path d="M291 42V18H367V42" fill="#C7DCEB"/>
+    <path d="M401 252V87H508V252" fill="#F6FAFC"/>
+    <path d="M422 87V62H487V87" fill="#D6E5F1"/>
+    <path d="M516 260V130H609V260" fill="#E3EDF4"/>
+    <path d="M535 130V108H590V130" fill="#CCDFEC"/>
+  </g>
+  <g fill="#5C91C4">
+    <path d="M179 124H197V146H179V124ZM219 124H237V146H219V124ZM179 164H197V186H179V164ZM219 164H237V186H219V164ZM179 204H197V226H179V204ZM219 204H237V226H219V204Z"/>
+    <path d="M291 68H311V94H291V68ZM344 68H364V94H344V68ZM291 113H311V139H291V113ZM344 113H364V139H344V113ZM291 158H311V184H291V158ZM344 158H364V184H344V158Z"/>
+    <path d="M422 111H442V136H422V111ZM467 111H487V136H467V111ZM422 154H442V179H422V154ZM467 154H487V179H467V154ZM535 151H553V175H535V151ZM573 151H591V175H573V151ZM535 191H553V215H535V191ZM573 191H591V215H573V191Z"/>
+  </g>
+  <g stroke="#75A6D4" stroke-width="2" stroke-dasharray="4 7">
+    <path d="M90 89C151 46 225 53 270 82"/>
+    <path d="M387 71C438 38 512 44 548 87"/>
+    <path d="M237 248C319 225 430 219 516 244"/>
+  </g>
+  <g fill="#1F4E78">
+    <circle cx="90" cy="89" r="6"/><circle cx="270" cy="82" r="6"/><circle cx="387" cy="71" r="6"/><circle cx="548" cy="87" r="6"/><circle cx="237" cy="248" r="6"/><circle cx="516" cy="244" r="6"/>
+  </g>
+  <g fill="#67A45E">
+    <circle cx="74" cy="266" r="28"/><circle cx="111" cy="258" r="34"/><circle cx="657" cy="263" r="34"/><circle cx="703" cy="270" r="29"/>
+  </g>
+  <g fill="#8CC779">
+    <circle cx="53" cy="282" r="24"/><circle cx="137" cy="278" r="26"/><circle cx="633" cy="280" r="25"/><circle cx="727" cy="285" r="23"/>
+  </g>
+  <path d="M89 288V220M103 290V214M675 290V218M692 291V225" stroke="#5B7048" stroke-width="7" stroke-linecap="round"/>
+  <path d="M44 310H716" stroke="#6A8E58" stroke-width="5" stroke-linecap="round"/>
+  <path d="M168 300H586" stroke="#A9C7D8" stroke-width="4" stroke-dasharray="12 10"/>
+</svg>

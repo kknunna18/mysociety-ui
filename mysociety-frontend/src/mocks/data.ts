@@ -1,0 +1,290 @@
+import type {
+  AuditEntry,
+  Booking,
+  Complaint,
+  Facility,
+  Invoice,
+  Payment,
+  Resident,
+  Society,
+  User,
+  Visitor,
+} from '@/types';
+
+export const SOCIETY_ID = 'green-valley';
+
+export const societies: Society[] = [
+  { id: 'green-valley', name: 'Green Valley Apartments', city: 'Hyderabad', unitCount: 120 },
+  { id: 'lake-view', name: 'Lake View Residency', city: 'Bengaluru', unitCount: 84 },
+];
+
+export const users: (User & { password: string })[] = [
+  {
+    id: 'usr-admin',
+    name: 'Asha Rao',
+    email: 'admin@mysociety.test',
+    role: 'ADMIN',
+    societyId: SOCIETY_ID,
+    password: 'admin123',
+  },
+  {
+    id: 'usr-resident',
+    name: 'Kiran Kumar',
+    email: 'resident@mysociety.test',
+    role: 'RESIDENT',
+    societyId: SOCIETY_ID,
+    unit: 'A-402',
+    password: 'resident123',
+  },
+  {
+    id: 'usr-security',
+    name: 'Ravi Gate',
+    email: 'security@mysociety.test',
+    role: 'SECURITY',
+    societyId: SOCIETY_ID,
+    password: 'security123',
+  },
+];
+
+export const residents: Resident[] = [
+  {
+    id: 'res-001',
+    societyId: SOCIETY_ID,
+    name: 'Kiran Kumar',
+    email: 'kiran@example.com',
+    phone: '+91 98765 43210',
+    unit: 'A-402',
+    ownership: 'OWNER',
+    moveInDate: '2021-06-15',
+    active: true,
+  },
+  {
+    id: 'res-002',
+    societyId: SOCIETY_ID,
+    name: 'Meera Nair',
+    email: 'meera@example.com',
+    phone: '+91 98111 22334',
+    unit: 'B-201',
+    ownership: 'TENANT',
+    moveInDate: '2023-01-05',
+    active: true,
+  },
+  {
+    id: 'res-003',
+    societyId: SOCIETY_ID,
+    name: 'Arjun Sethi',
+    email: 'arjun@example.com',
+    phone: '+91 90000 11223',
+    unit: 'C-104',
+    ownership: 'OWNER',
+    moveInDate: '2019-11-20',
+    active: true,
+  },
+  {
+    id: 'res-004',
+    societyId: SOCIETY_ID,
+    name: 'Fatima Sheikh',
+    email: 'fatima@example.com',
+    phone: '+91 91234 56780',
+    unit: 'A-105',
+    ownership: 'TENANT',
+    moveInDate: '2024-03-01',
+    active: false,
+  },
+];
+
+export const invoices: Invoice[] = [
+  {
+    id: 'inv-2401',
+    societyId: SOCIETY_ID,
+    residentId: 'res-001',
+    unit: 'A-402',
+    period: '2024-05',
+    amount: 4200,
+    dueDate: '2024-05-10',
+    status: 'PAID',
+  },
+  {
+    id: 'inv-2402',
+    societyId: SOCIETY_ID,
+    residentId: 'res-002',
+    unit: 'B-201',
+    period: '2024-05',
+    amount: 3800,
+    dueDate: '2024-05-10',
+    status: 'DUE',
+  },
+  {
+    id: 'inv-2403',
+    societyId: SOCIETY_ID,
+    residentId: 'res-003',
+    unit: 'C-104',
+    period: '2024-04',
+    amount: 4100,
+    dueDate: '2024-04-10',
+    status: 'OVERDUE',
+  },
+  {
+    id: 'inv-2404',
+    societyId: SOCIETY_ID,
+    residentId: 'res-004',
+    unit: 'A-105',
+    period: '2024-05',
+    amount: 3600,
+    dueDate: '2024-05-10',
+    status: 'DUE',
+  },
+];
+
+export const payments: Payment[] = [
+  {
+    id: 'pay-9001',
+    societyId: SOCIETY_ID,
+    invoiceId: 'inv-2401',
+    residentId: 'res-001',
+    amount: 4200,
+    method: 'UPI',
+    paidAt: '2024-05-04T09:12:00.000Z',
+    reference: 'UPI-4471209',
+  },
+  {
+    id: 'pay-9002',
+    societyId: SOCIETY_ID,
+    invoiceId: 'inv-2403',
+    residentId: 'res-003',
+    amount: 2000,
+    method: 'NETBANKING',
+    paidAt: '2024-04-18T14:35:00.000Z',
+    reference: 'NB-88213',
+  },
+];
+
+export const complaints: Complaint[] = [
+  {
+    id: 'cmp-501',
+    societyId: SOCIETY_ID,
+    residentId: 'res-001',
+    unit: 'A-402',
+    category: 'PLUMBING',
+    title: 'Leaking kitchen tap',
+    description: 'Continuous drip from the kitchen mixer tap since Monday.',
+    status: 'OPEN',
+    priority: 'MEDIUM',
+    createdAt: '2024-05-06T05:30:00.000Z',
+    updatedAt: '2024-05-06T05:30:00.000Z',
+  },
+  {
+    id: 'cmp-502',
+    societyId: SOCIETY_ID,
+    residentId: 'res-002',
+    unit: 'B-201',
+    category: 'ELECTRICAL',
+    title: 'Corridor light not working',
+    description: 'Second floor corridor light near lift lobby is dead.',
+    status: 'IN_PROGRESS',
+    priority: 'HIGH',
+    createdAt: '2024-05-02T11:00:00.000Z',
+    updatedAt: '2024-05-05T08:20:00.000Z',
+  },
+  {
+    id: 'cmp-503',
+    societyId: SOCIETY_ID,
+    residentId: 'res-003',
+    unit: 'C-104',
+    category: 'HOUSEKEEPING',
+    title: 'Garbage not collected',
+    description: 'Wet waste was not collected on Sunday.',
+    status: 'RESOLVED',
+    priority: 'LOW',
+    createdAt: '2024-04-28T04:15:00.000Z',
+    updatedAt: '2024-04-29T06:45:00.000Z',
+  },
+];
+
+export const visitors: Visitor[] = [
+  {
+    id: 'vis-301',
+    societyId: SOCIETY_ID,
+    name: 'Suresh (Courier)',
+    phone: '+91 99887 77665',
+    unit: 'A-402',
+    purpose: 'Parcel delivery',
+    status: 'CHECKED_IN',
+    expectedAt: '2024-05-07T09:00:00.000Z',
+    checkedInAt: '2024-05-07T09:05:00.000Z',
+  },
+  {
+    id: 'vis-302',
+    societyId: SOCIETY_ID,
+    name: 'Divya Menon',
+    phone: '+91 90909 10101',
+    unit: 'B-201',
+    purpose: 'Guest',
+    status: 'EXPECTED',
+    expectedAt: '2024-05-07T17:30:00.000Z',
+  },
+  {
+    id: 'vis-303',
+    societyId: SOCIETY_ID,
+    name: 'AC Service Tech',
+    phone: '+91 93333 44445',
+    unit: 'C-104',
+    purpose: 'Appliance service',
+    status: 'CHECKED_OUT',
+    expectedAt: '2024-05-06T10:00:00.000Z',
+    checkedInAt: '2024-05-06T10:10:00.000Z',
+    checkedOutAt: '2024-05-06T11:40:00.000Z',
+  },
+];
+
+export const facilities: Facility[] = [
+  { id: 'fac-club', societyId: SOCIETY_ID, name: 'Clubhouse', capacity: 80, hourlyRate: 500 },
+  { id: 'fac-gym', societyId: SOCIETY_ID, name: 'Gym', capacity: 15, hourlyRate: 0 },
+  { id: 'fac-court', societyId: SOCIETY_ID, name: 'Badminton Court', capacity: 4, hourlyRate: 200 },
+];
+
+export const bookings: Booking[] = [
+  {
+    id: 'bkg-701',
+    societyId: SOCIETY_ID,
+    facilityId: 'fac-club',
+    facilityName: 'Clubhouse',
+    residentId: 'res-001',
+    unit: 'A-402',
+    date: '2024-05-12',
+    slot: '18:00-21:00',
+    status: 'CONFIRMED',
+  },
+  {
+    id: 'bkg-702',
+    societyId: SOCIETY_ID,
+    facilityId: 'fac-court',
+    facilityName: 'Badminton Court',
+    residentId: 'res-002',
+    unit: 'B-201',
+    date: '2024-05-09',
+    slot: '07:00-08:00',
+    status: 'REQUESTED',
+  },
+];
+
+export const auditLog: AuditEntry[] = [
+  {
+    id: 'aud-1',
+    societyId: SOCIETY_ID,
+    actor: 'Asha Rao',
+    action: 'INVOICE_GENERATED',
+    entity: 'Invoice',
+    entityId: 'inv-2404',
+    at: '2024-05-01T03:00:00.000Z',
+  },
+  {
+    id: 'aud-2',
+    societyId: SOCIETY_ID,
+    actor: 'Kiran Kumar',
+    action: 'PAYMENT_RECORDED',
+    entity: 'Payment',
+    entityId: 'pay-9001',
+    at: '2024-05-04T09:12:00.000Z',
+  },
+];
