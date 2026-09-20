@@ -32,13 +32,13 @@ interface BackendLoginResponse {
 }
 
 const apiBaseUrl = (
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'https://api.example.com/identity'
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:8080/api/v1'
 ).replace(/\/$/, '');
 
 const loginUrl =
   import.meta.env.MODE === 'development'
-    ? `${window.location.origin}/identity/api/v1/auth/login`
-    : `${apiBaseUrl}/api/v1/auth/login`;
+    ? `${window.location.origin}/api/auth/login`
+    : `${apiBaseUrl}/auth/login`;
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const response = isMockApiEnabled()
@@ -82,7 +82,8 @@ export async function login(username: string, password: string): Promise<LoginRe
 
 const toRole = (role: string | undefined): Role => {
   const normalized = role?.toUpperCase();
-  return normalized === 'ADMIN' || normalized === 'COMMITTEE' || normalized === 'SECURITY' ? normalized : 'RESIDENT';
+  const roles: Role[] = ['ADMIN', 'COMMITTEE', 'SECURITY', 'ACCOUNTANT', 'FACILITY_MANAGER', 'VENDOR', 'PLATFORM_ADMIN'];
+  return roles.includes(normalized as Role) ? (normalized as Role) : 'RESIDENT';
 };
 
 const toSociety = (society: BackendSociety | null): AvailableSociety => ({
@@ -92,7 +93,7 @@ const toSociety = (society: BackendSociety | null): AvailableSociety => ({
 });
 
 export async function selectSociety(request: { loginContextToken: string; societyId: string }): Promise<AuthenticatedLoginResponse> {
-  const response = isMockApiEnabled() ? await api.selectSociety(request) : (await axiosClient.post<AuthenticatedLoginResponse>('/identity/api/v1/auth/select-society', request)).data;
+  const response = isMockApiEnabled() ? await api.selectSociety(request) : (await axiosClient.post<AuthenticatedLoginResponse>('/auth/select-society', request)).data;
   setToken(response.accessToken);
   return response;
 }

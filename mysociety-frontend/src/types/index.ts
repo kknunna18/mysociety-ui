@@ -1,4 +1,12 @@
-export type Role = 'ADMIN' | 'COMMITTEE' | 'RESIDENT' | 'SECURITY';
+export type Role =
+  | 'ADMIN'
+  | 'COMMITTEE'
+  | 'RESIDENT'
+  | 'SECURITY'
+  | 'ACCOUNTANT'
+  | 'FACILITY_MANAGER'
+  | 'VENDOR'
+  | 'PLATFORM_ADMIN';
 
 export interface Society {
   id: string;
