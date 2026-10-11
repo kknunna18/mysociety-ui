@@ -29,7 +29,11 @@ interface Store {
   facilities: Facility[];
   bookings: Booking[];
   auditLog: AuditEntry[];
+  // Communication / notices
+  notices: any[]; // NoticeResponse[] (kept any to avoid import cycles in mock file)
+  audiences: any[]; // AudienceResponse[]
 }
+
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
@@ -42,6 +46,8 @@ const createStore = (): Store => ({
   facilities: clone(seed.facilities),
   bookings: clone(seed.bookings),
   auditLog: clone(seed.auditLog),
+  notices: ('notices' in seed) ? clone((seed as any).notices) : [],
+  audiences: ('audiences' in seed) ? clone((seed as any).audiences) : [],
 });
 
 let store = createStore();
@@ -104,6 +110,12 @@ export const mockApi = {
       user,
       activeSociety: society,
     });
+  },
+
+  async getMySocieties() {
+    // Return available societies for the current mock user
+    const list = seed.societies.map((s) => ({ id: s.id, code: (s.name || '').toUpperCase().replace(/\s+/g, '_'), name: s.name, roles: [] }));
+    return delay(list);
   },
 
   async getSummary(): Promise<DashboardSummary> {
@@ -365,6 +377,98 @@ export const mockApi = {
 
   async listAudit(): Promise<AuditEntry[]> {
     return delay(clone(store.auditLog));
+  },
+
+  // Notices / Communication mock implementations
+  async listNotices(page = 0, pageSize = 50): Promise<any> {
+    const items = clone(store.notices || []);
+    return delay({ items, total: items.length, page, pageSize });
+  },
+
+
+  async createNotice(input: { noticeNumber: string; title: string; content: string; category: string; priority: string; publishAt?: string | null; expiresAt?: string | null }): Promise<any> {
+    const now = new Date().toISOString();
+    const notice = {
+      id: nextId('notice'),
+      societyId: seed.SOCIETY_ID,
+      noticeNumber: input.noticeNumber,
+      title: input.title,
+      content: input.content,
+      category: input.category,
+      priority: input.priority,
+      publishAt: input.publishAt ?? null,
+      expiresAt: input.expiresAt ?? null,
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: input.publishAt ?? null,
+    };
+    store.notices = [notice, ...(store.notices || [])];
+    audit('system', 'NOTICE_CREATED', 'Notice', notice.id);
+    return delay(clone(notice));
+  },
+
+  async replaceNotice(id: string, input: { noticeNumber: string; title: string; content: string; category: string; priority: string; publishAt?: string | null; expiresAt?: string | null }): Promise<any> {
+    const notice = (store.notices || []).find((n) => n.id === id);
+    if (!notice) throw new ApiError(404, `Notice ${id} not found`);
+    notice.noticeNumber = input.noticeNumber;
+    notice.title = input.title;
+    notice.content = input.content;
+    notice.priority = input.priority;
+    notice.category = input.category;
+    notice.publishAt = input.publishAt ?? null;
+    notice.expiresAt = input.expiresAt ?? null;
+    notice.updatedAt = new Date().toISOString();
+    if (input.publishAt) notice.publishedAt = input.publishAt;
+    audit('system', 'NOTICE_UPDATED', 'Notice', notice.id);
+    return delay(clone(notice));
+  },
+
+
+  async publishNotice(id: string): Promise<any> {
+    const notice = (store.notices || []).find((n) => n.id === id);
+    if (!notice) throw new ApiError(404, `Notice ${id} not found`);
+    const now = new Date().toISOString();
+    notice.publishAt = now;
+    notice.publishedAt = now;
+    notice.updatedAt = now;
+    audit('system', 'NOTICE_PUBLISHED', 'Notice', notice.id);
+    return delay(clone(notice));
+  },
+
+  async deleteNotice(id: string): Promise<void> {
+    const before = (store.notices || []).length;
+    store.notices = (store.notices || []).filter((n) => n.id !== id);
+    if ((store.notices || []).length === before) throw new ApiError(404, `Notice ${id} not found`);
+    audit('system', 'NOTICE_DELETED', 'Notice', id);
+    return delay(undefined as unknown as void);
+  },
+
+  async listNoticeAudiences(noticeId: string): Promise<any[]> {
+    const items = (store.audiences || []).filter((a) => a.noticeId === noticeId);
+    return delay(clone(items));
+  },
+
+  async addNoticeAudience(noticeId: string, input: { type: string; value?: string }): Promise<any> {
+    const notice = (store.notices || []).find((n) => n.id === noticeId);
+    if (!notice) throw new ApiError(404, `Notice ${noticeId} not found`);
+    const audience = {
+      id: nextId('aud'),
+      noticeId,
+      type: input.type,
+      value: input.value ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    store.audiences = [audience, ...(store.audiences || [])];
+    audit('system', 'AUDIENCE_ADDED', 'Audience', audience.id);
+    return delay(clone(audience));
+  },
+
+  async deleteNoticeAudience(noticeId: string, id: string): Promise<void> {
+    const before = (store.audiences || []).length;
+    store.audiences = (store.audiences || []).filter((a) => !(a.noticeId === noticeId && a.id === id));
+    if ((store.audiences || []).length === before) throw new ApiError(404, `Audience ${id} not found for notice ${noticeId}`);
+    audit('system', 'AUDIENCE_REMOVED', 'Audience', id);
+    return delay(undefined as unknown as void);
   },
 };
 

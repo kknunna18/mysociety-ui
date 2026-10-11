@@ -17,6 +17,11 @@ import type {
   LoginResponse,
   AuthenticatedLoginResponse,
   Visitor,
+  NoticeRequest,
+  NoticeResponse,
+  AudienceRequest,
+  AudienceResponse,
+  Paginated,
 } from '@/types';
 
 /** Both the mock and the HTTP implementation satisfy this contract. */
@@ -57,7 +62,7 @@ const httpApi: ApiClient = {
     const requestQuery = { societyId, ...query };
     const residentsPath = `/api/v1/societies/${encodeURIComponent(societyId)}/residents`;
     const url = import.meta.env.MODE === 'development'
-      ? `${window.location.origin}/identity${residentsPath}`
+      ? `${window.location.origin}${residentsPath}`
       : `/v1/societies/${encodeURIComponent(societyId)}/residents`;
     return request<ResidentPageResponse>(url, {
       signal,
@@ -91,6 +96,21 @@ const httpApi: ApiClient = {
     request<Booking>('/bookings', { method: 'POST', body: JSON.stringify(input) }),
   cancelBooking: (id: string) => request<Booking>(`/bookings/${id}/cancel`, { method: 'POST' }),
   listAudit: () => request<AuditEntry[]>('/audit'),
+
+  // Notices / Communication http implementations
+  listNotices: (page = 0, pageSize = 50) =>
+    request<Paginated<NoticeResponse>>('/notices', { query: { page, pageSize } }),
+  createNotice: (input: NoticeRequest) =>
+    request<NoticeResponse>('/notices', { method: 'POST', body: JSON.stringify(input) }),
+  replaceNotice: (id: string, input: NoticeRequest) =>
+    request<NoticeResponse>(`/notices/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(input) }),
+  publishNotice: (id: string) => request<NoticeResponse>(`/notices/${encodeURIComponent(id)}/publish`, { method: 'POST' }),
+  deleteNotice: (id: string) => request<void>(`/notices/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listNoticeAudiences: (id: string) => request<AudienceResponse[]>(`/notices/${encodeURIComponent(id)}/audiences`),
+  addNoticeAudience: (id: string, input: AudienceRequest) =>
+    request<AudienceResponse>(`/notices/${encodeURIComponent(id)}/audiences`, { method: 'POST', body: JSON.stringify(input) }),
+  deleteNoticeAudience: (noticeId: string, id: string) =>
+    request<void>(`/notices/${encodeURIComponent(noticeId)}/audiences/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
 export const isMockApiEnabled = (): boolean =>

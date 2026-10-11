@@ -41,7 +41,14 @@ export default function LoginPage() {
       <Typography variant="h4" fontWeight={800}>MySociety</Typography>
       <Typography variant="h2" sx={{ mt: 10, maxWidth: 520, fontWeight: 800 }}>Your community, connected.</Typography>
       <Typography variant="h6" sx={{ mt: 3, maxWidth: 480, opacity: .9 }}>Manage payments, complaints, visitors and community updates in one secure place.</Typography>
-      <Box aria-hidden sx={{ mt: 8, border: '2px solid rgba(255,255,255,.35)', borderRadius: 4, height: 160, maxWidth: 480, position: 'relative', '&:before': { content: '""', position: 'absolute', left: '12%', bottom: 0, width: '24%', height: '70%', bgcolor: 'rgba(255,255,255,.18)' }, '&:after': { content: '""', position: 'absolute', right: '12%', bottom: 0, width: '34%', height: '100%', bgcolor: 'rgba(255,255,255,.12)' } }} />
+      <Box sx={{ mt: 8, maxWidth: 480, width: '100%' }}>
+        <Box
+          component="img"
+          src="/login-community.svg"
+          alt="MySociety apartment community"
+          sx={{ display: 'block', width: '100%', height: 'auto', borderRadius: 2 }}
+        />
+      </Box>
     </Box>
     <Stack justifyContent="center" alignItems="center" p={{ xs: 2, sm: 4 }}>
       <Card component="section" sx={{ maxWidth: 460, width: '100%' }}><CardContent sx={{ p: { xs: 3, sm: 5 } }}>

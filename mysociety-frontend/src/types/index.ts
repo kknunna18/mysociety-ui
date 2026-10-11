@@ -224,6 +224,37 @@ export interface Paginated<T> {
   pageSize: number;
 }
 
+/* Notices / Communication types */
+export interface NoticeRequest {
+  noticeNumber: string;
+  title: string;
+  content: string;
+  category: string; // backend enum NoticeCategory
+  // backend enum NoticePriority: URGENT | HIGH | LOW | NORMAL
+  priority: 'URGENT' | 'HIGH' | 'LOW' | 'NORMAL';
+  publishAt?: string | null;
+  expiresAt?: string | null;
+}
+
+export interface NoticeResponse extends NoticeRequest {
+  id: string;
+  societyId: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string | null;
+}
+
+export interface AudienceRequest {
+  type: 'ALL' | 'BLOCK' | 'UNIT' | 'ROLE' | 'CUSTOM';
+  value?: string; // e.g., block id, unit id, role name, or custom group id
+}
+
+export interface AudienceResponse extends AudienceRequest {
+  id: string;
+  noticeId: string;
+  createdAt: string;
+}
+
 export class ApiError extends Error {
   readonly status: number;
 

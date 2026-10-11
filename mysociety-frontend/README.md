@@ -21,7 +21,7 @@ npm run build
 
 ## API and security contract
 
-`VITE_API_BASE_URL` defaults to `http://localhost:8080/api/v1`, the API Gateway. Page components call typed API/service modules only; the UI never accesses a service database. Axios sends credentials for the HttpOnly refresh-cookie flow. Access tokens remain in memory and are never persisted to browser storage. The only browser-persisted authentication convenience is an explicitly selected remembered email.
+`VITE_API_BASE_URL` defaults to `http://localhost:8081/api/v1`, the API Gateway. Page components call typed API/service modules only; the UI never accesses a service database. Axios sends credentials for the HttpOnly refresh-cookie flow. Access tokens remain in memory and are never persisted to browser storage. The only browser-persisted authentication convenience is an explicitly selected remembered email.
 
 The live integration assumes `POST /auth/login`, `POST /auth/select-society`, and typed gateway resources beneath the configured base URL. RFC 9457 validation errors should be returned as safe, user-readable messages. Society identity must be derived from the session/API contract rather than user-entered tenant headers.
 

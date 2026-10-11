@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, alpha, lighten, darken } from '@mui/material/styles';
 
 export const theme = createTheme({
   palette: {
@@ -17,3 +17,23 @@ export const theme = createTheme({
     MuiCssBaseline: { styleOverrides: { ':focus-visible': { outline: '3px solid #2E74B5', outlineOffset: 2 } } },
   },
 });
+
+// Polyfill theme color helpers when using @mui/x-data-grid versions that expect them to exist
+try {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const t = theme as any;
+  if (!t.alpha) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    t.alpha = (color: string, amount: number) => alpha(color, amount);
+  }
+  if (!t.lighten) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    t.lighten = (color: string, amount: number) => lighten(color, amount);
+  }
+  if (!t.darken) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    t.darken = (color: string, amount: number) => darken(color, amount);
+  }
+} catch (e) {
+  // ignore
+}
