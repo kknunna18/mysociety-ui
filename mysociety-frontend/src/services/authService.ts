@@ -65,7 +65,7 @@ export async function login(username: string, password: string): Promise<LoginRe
         id: currentUser.id ?? '',
         name: [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ') || currentUser.email || '',
         email: currentUser.email ?? '',
-        role: toRole((currentUser.roles && currentUser.roles[0]) ?? undefined),
+        role: toRole(currentUser.roles),
         societyId: selectedSociety?.id ?? currentUser.societyId ?? '',
         mobileNumber: currentUser.mobileNumber,
         status: currentUser.status,
@@ -96,7 +96,7 @@ export async function login(username: string, password: string): Promise<LoginRe
     id: raw.currentUser.id,
     name: [raw.currentUser.firstName, raw.currentUser.lastName].filter(Boolean).join(' ') || raw.currentUser.email,
     email: raw.currentUser.email,
-    role: toRole(raw.roles[0]),
+    role: toRole(raw.roles),
     societyId: raw.selectedSociety?.id ?? '',
     mobileNumber: raw.currentUser.mobileNumber,
     status: raw.currentUser.status,
@@ -123,10 +123,27 @@ export async function login(username: string, password: string): Promise<LoginRe
   };
 }
 
-const toRole = (role: string | undefined): Role => {
-  const normalized = role?.toUpperCase();
-  const roles: Role[] = ['ADMIN', 'COMMITTEE', 'SECURITY', 'ACCOUNTANT', 'FACILITY_MANAGER', 'VENDOR', 'PLATFORM_ADMIN'];
-  return roles.includes(normalized as Role) ? (normalized as Role) : 'RESIDENT';
+const ROLE_ALIASES: Record<string, Role> = {
+  SOCIETY_ADMIN: 'ADMIN',
+  COMMITTEE_MEMBER: 'COMMITTEE',
+  SECURITY_GUARD: 'SECURITY',
+  VENDOR_TECHNICIAN: 'VENDOR',
+};
+const ROLE_PRIORITY: Role[] = ['PLATFORM_ADMIN', 'ADMIN', 'COMMITTEE', 'ACCOUNTANT', 'FACILITY_MANAGER', 'SECURITY', 'VENDOR', 'RESIDENT'];
+
+// Maps backend role codes to the UI role; when several are held, the most privileged one wins.
+const toRole = (role: string | string[] | undefined): Role => {
+  const mapped = (Array.isArray(role) ? role : [role]).map((r) => {
+    const upper = r?.toUpperCase() ?? '';
+    return ROLE_ALIASES[upper] ?? (upper as Role);
+  });
+  return ROLE_PRIORITY.find((candidate) => mapped.includes(candidate)) ?? 'RESIDENT';
+};
+
+// The backend session user carries a `roles` list; the UI works with a single `role`.
+const withUiRole = (response: AuthenticatedLoginResponse): AuthenticatedLoginResponse => {
+  const roles = (response.user as { roles?: string[] }).roles;
+  return roles ? { ...response, user: { ...response.user, role: toRole(roles) } } : response;
 };
 
 const toSociety = (society: BackendSociety | null): AvailableSociety => ({
@@ -136,7 +153,7 @@ const toSociety = (society: BackendSociety | null): AvailableSociety => ({
 });
 
 export async function selectSociety(request: { loginContextToken: string; societyId: string }): Promise<AuthenticatedLoginResponse> {
-  const response = isMockApiEnabled() ? await api.selectSociety(request) : (await axiosClient.post<AuthenticatedLoginResponse>('/auth/select-society', request)).data;
+  const response = withUiRole(isMockApiEnabled() ? await api.selectSociety(request) : (await axiosClient.post<AuthenticatedLoginResponse>('/auth/select-society', request)).data);
   setToken(response.accessToken);
   return response;
 }
@@ -147,7 +164,7 @@ export async function switchSociety(societyId: string): Promise<AuthenticatedLog
     // mockApi.selectSociety ignores loginContextToken so pass empty
     return await api.selectSociety({ loginContextToken: '', societyId });
   }
-  const response = (await axiosClient.post<AuthenticatedLoginResponse>('/auth/select-society', { societyId })).data;
+  const response = withUiRole((await axiosClient.post<AuthenticatedLoginResponse>('/auth/select-society', { societyId })).data);
   setToken(response.accessToken);
   return response;
 }

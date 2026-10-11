@@ -5,6 +5,7 @@ import type {
   Booking,
   Complaint,
   ComplaintStatus,
+  CreateComplaintInput,
   DashboardSummary,
   Facility,
   Invoice,
@@ -17,10 +18,21 @@ import type {
   MembershipType,
   Session,
   Society,
+  SocietyInput,
+  SocietyListParams,
+  SocietyProfile,
+  Paginated,
   Visitor,
+  FinanceInvoice,
+  FinancePayment,
+  ChargeHead,
+  ChargeHeadInput,
+  BillingRun,
+  BillingRunInput,
 } from '@/types';
 
 interface Store {
+  societies: SocietyProfile[];
   residents: Resident[];
   invoices: Invoice[];
   payments: Payment[];
@@ -37,7 +49,15 @@ interface Store {
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+const financeMock: { chargeHeads: ChargeHead[]; runs: BillingRun[] } = {
+  chargeHeads: [
+    { id: 'chg-1', code: 'MAINT', name: 'Monthly maintenance', description: null, calculationType: 'FLAT', defaultAmount: 2500, taxPercentage: 0, recurring: true, active: true },
+  ],
+  runs: [],
+};
+
 const createStore = (): Store => ({
+  societies: clone(seed.societyProfiles),
   residents: clone(seed.residents),
   invoices: clone(seed.invoices),
   payments: clone(seed.payments),
@@ -127,7 +147,7 @@ export const mockApi = {
     return delay({
       residents: store.residents.filter((resident) => resident.active).length,
       openComplaints: store.complaints.filter((complaint) =>
-        ['OPEN', 'IN_PROGRESS'].includes(complaint.status)
+        ['OPEN', 'UNDER_REVIEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_FOR_RESIDENT', 'REOPENED'].includes(complaint.status)
       ).length,
       duesAmount,
       collectedThisMonth,
@@ -257,23 +277,165 @@ export const mockApi = {
     return delay(clone(payment));
   },
 
+  async listFinanceInvoices(): Promise<FinanceInvoice[]> {
+    return delay(
+      store.invoices.map((i) => ({
+        id: i.id,
+        unitId: i.unit,
+        invoiceNumber: i.id.toUpperCase(),
+        billingPeriod: i.period,
+        invoiceDate: i.dueDate,
+        dueDate: i.dueDate,
+        currencyCode: 'INR',
+        totalAmount: i.amount,
+        paidAmount: i.status === 'PAID' ? i.amount : 0,
+        outstandingAmount: i.status === 'PAID' ? 0 : i.amount,
+        status: i.status === 'PAID' ? 'PAID' : i.status === 'OVERDUE' ? 'OVERDUE' : 'PUBLISHED',
+      }))
+    );
+  },
+
+  async listFinancePayments(): Promise<FinancePayment[]> {
+    return delay(
+      store.payments.map((p) => ({
+        id: p.id,
+        unitId: p.residentId,
+        paymentReference: p.reference,
+        provider: p.method,
+        requestedAmount: p.amount,
+        confirmedAmount: p.amount,
+        refundedAmount: 0,
+        status: 'CONFIRMED',
+        createdAt: p.paidAt,
+        confirmedAt: p.paidAt,
+      }))
+    );
+  },
+
+  async payFinanceInvoice(invoiceId: string, provider: PaymentMethod): Promise<void> {
+    await mockApi.recordPayment(invoiceId, provider);
+  },
+
+  async listChargeHeads(): Promise<ChargeHead[]> {
+    return delay(clone(financeMock.chargeHeads));
+  },
+
+  async createChargeHead(input: ChargeHeadInput): Promise<ChargeHead> {
+    if (financeMock.chargeHeads.some((c) => c.code === input.code)) {
+      throw new ApiError(409, `Charge head ${input.code} already exists`);
+    }
+    const head: ChargeHead = {
+      id: nextId('chg'),
+      code: input.code,
+      name: input.name,
+      description: null,
+      calculationType: 'FLAT',
+      defaultAmount: input.defaultAmount ?? null,
+      taxPercentage: 0,
+      recurring: true,
+      active: true,
+    };
+    financeMock.chargeHeads = [head, ...financeMock.chargeHeads];
+    return delay(clone(head));
+  },
+
+  async listBillingRuns(): Promise<BillingRun[]> {
+    return delay(clone(financeMock.runs));
+  },
+
+  async createBillingRun(input: BillingRunInput): Promise<BillingRun> {
+    const run: BillingRun = { id: nextId('run'), ...input, status: 'DRAFT', totalUnits: 0, totalAmount: 0, publishedAt: null };
+    financeMock.runs = [run, ...financeMock.runs];
+    return delay(clone(run));
+  },
+
+  async publishBillingRun(id: string): Promise<BillingRun> {
+    const run = financeMock.runs.find((r) => r.id === id);
+    if (!run) throw new ApiError(404, `Billing run ${id} not found`);
+    run.status = 'PUBLISHED';
+    run.publishedAt = new Date().toISOString();
+    return delay(clone(run));
+  },
+
+  async listSocieties(params: SocietyListParams = {}): Promise<Paginated<SocietyProfile>> {
+    const q = (params.q ?? '').trim().toLowerCase();
+    const matches = store.societies.filter(
+      (s) =>
+        (!params.status || s.status === params.status) &&
+        (!q || [s.name, s.code, s.city ?? ''].some((v) => v.toLowerCase().includes(q)))
+    );
+    const page = params.page ?? 0;
+    const pageSize = params.size ?? 12;
+    return delay({ items: clone(matches.slice(page * pageSize, (page + 1) * pageSize)), total: matches.length, page, pageSize });
+  },
+
+  async getSociety(id: string): Promise<SocietyProfile> {
+    const found = store.societies.find((s) => s.id === id);
+    if (!found) throw new ApiError(404, 'Society not found');
+    return delay(clone(found));
+  },
+
+  async createSociety(input: SocietyInput): Promise<SocietyProfile> {
+    const code = input.code.trim().toUpperCase();
+    if (store.societies.some((s) => s.code === code)) throw new ApiError(400, 'Society code already exists');
+    const now = new Date().toISOString();
+    const society: SocietyProfile = {
+      ...input,
+      id: nextId('soc'),
+      code,
+      countryCode: input.countryCode ?? 'IN',
+      timezone: input.timezone ?? 'Asia/Kolkata',
+      currencyCode: input.currencyCode ?? 'INR',
+      status: input.status ?? 'ACTIVE',
+      createdAt: now,
+      updatedAt: now,
+      version: 0,
+    };
+    store.societies.unshift(society);
+    return delay(clone(society));
+  },
+
+  async updateSociety(id: string, input: SocietyInput): Promise<SocietyProfile> {
+    const index = store.societies.findIndex((s) => s.id === id);
+    if (index < 0) throw new ApiError(404, 'Society not found');
+    const code = input.code.trim().toUpperCase();
+    if (store.societies.some((s) => s.code === code && s.id !== id)) throw new ApiError(400, 'Society code already exists');
+    const current = store.societies[index];
+    store.societies[index] = {
+      ...current,
+      ...input,
+      code,
+      countryCode: input.countryCode ?? current.countryCode,
+      timezone: input.timezone ?? current.timezone,
+      currencyCode: input.currencyCode ?? current.currencyCode,
+      status: input.status ?? current.status,
+      updatedAt: new Date().toISOString(),
+      version: current.version + 1,
+    };
+    return delay(clone(store.societies[index]));
+  },
+
   async listComplaints(): Promise<Complaint[]> {
     return delay(clone(store.complaints));
   },
 
-  async createComplaint(
-    input: Pick<Complaint, 'unit' | 'category' | 'title' | 'description' | 'priority'> & {
-      residentId: string;
-    }
-  ): Promise<Complaint> {
+  async createComplaint(input: CreateComplaintInput): Promise<Complaint> {
     const now = new Date().toISOString();
     const complaint: Complaint = {
-      ...input,
       id: nextId('cmp'),
-      societyId: seed.SOCIETY_ID,
+      complaintNumber: `CMP-${Math.random().toString(16).slice(2, 10).toUpperCase()}`,
+      category: input.category,
+      subject: input.subject,
+      description: input.description,
+      priority: input.priority,
       status: 'OPEN',
+      assignedUserId: null,
+      slaDueAt: null,
+      resolvedAt: null,
+      closedAt: null,
       createdAt: now,
       updatedAt: now,
+      version: 0,
     };
     store.complaints = [complaint, ...store.complaints];
     audit('system', 'COMPLAINT_CREATED', 'Complaint', complaint.id);

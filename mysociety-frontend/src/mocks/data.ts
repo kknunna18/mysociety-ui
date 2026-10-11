@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   AuditEntry,
   Booking,
   Complaint,
@@ -7,6 +7,7 @@ import type {
   Payment,
   Resident,
   Society,
+  SocietyProfile,
   User,
   Visitor,
 } from '@/types';
@@ -16,6 +17,21 @@ export const SOCIETY_ID = 'green-valley';
 export const societies: Society[] = [
   { id: 'green-valley', name: 'Green Valley Apartments', city: 'Hyderabad', unitCount: 120 },
   { id: 'lake-view', name: 'Lake View Residency', city: 'Bengaluru', unitCount: 84 },
+];
+
+export const societyProfiles: SocietyProfile[] = [
+  {
+    id: 'green-valley', code: 'GREEN_VALLEY', name: 'Green Valley Apartments', registrationNumber: 'TS/HYD/2015/0142',
+    email: 'office@greenvalley.example', phone: '+91-9000000001', addressLine1: '12 Lakeside Road', addressLine2: 'Gachibowli',
+    city: 'Hyderabad', stateName: 'Telangana', postalCode: '500032', countryCode: 'IN', timezone: 'Asia/Kolkata',
+    currencyCode: 'INR', logoUrl: null, status: 'ACTIVE', createdAt: '2025-01-10T09:00:00Z', updatedAt: '2026-03-02T10:30:00Z', version: 3,
+  },
+  {
+    id: 'lake-view', code: 'LAKE_VIEW', name: 'Lake View Residency', registrationNumber: null,
+    email: 'admin@lakeview.example', phone: '+91-9000000002', addressLine1: '8 Ulsoor Main Road', addressLine2: null,
+    city: 'Bengaluru', stateName: 'Karnataka', postalCode: '560008', countryCode: 'IN', timezone: 'Asia/Kolkata',
+    currencyCode: 'INR', logoUrl: null, status: 'TRIAL', createdAt: '2026-02-01T09:00:00Z', updatedAt: '2026-02-01T09:00:00Z', version: 0,
+  },
 ];
 
 export const users: (User & { password: string })[] = [
@@ -162,45 +178,53 @@ export const payments: Payment[] = [
 export const complaints: Complaint[] = [
   {
     id: 'cmp-501',
-    societyId: SOCIETY_ID,
-    residentId: 'res-001',
-    unit: 'A-402',
+    complaintNumber: 'CMP-A1B2C3D4',
     category: 'PLUMBING',
-    title: 'Leaking kitchen tap',
+    subject: 'Leaking kitchen tap',
     description: 'Continuous drip from the kitchen mixer tap since Monday.',
     status: 'OPEN',
     priority: 'MEDIUM',
+    assignedUserId: null,
+    slaDueAt: '2024-05-08T05:30:00.000Z',
+    resolvedAt: null,
+    closedAt: null,
     createdAt: '2024-05-06T05:30:00.000Z',
     updatedAt: '2024-05-06T05:30:00.000Z',
+    version: 0,
   },
   {
     id: 'cmp-502',
-    societyId: SOCIETY_ID,
-    residentId: 'res-002',
-    unit: 'B-201',
+    complaintNumber: 'CMP-E5F6A7B8',
     category: 'ELECTRICAL',
-    title: 'Corridor light not working',
+    subject: 'Corridor light not working',
     description: 'Second floor corridor light near lift lobby is dead.',
     status: 'IN_PROGRESS',
     priority: 'HIGH',
+    assignedUserId: null,
+    slaDueAt: '2024-05-03T11:00:00.000Z',
+    resolvedAt: null,
+    closedAt: null,
     createdAt: '2024-05-02T11:00:00.000Z',
     updatedAt: '2024-05-05T08:20:00.000Z',
+    version: 2,
   },
   {
     id: 'cmp-503',
-    societyId: SOCIETY_ID,
-    residentId: 'res-003',
-    unit: 'C-104',
+    complaintNumber: 'CMP-C9D0E1F2',
     category: 'HOUSEKEEPING',
-    title: 'Garbage not collected',
+    subject: 'Garbage not collected',
     description: 'Wet waste was not collected on Sunday.',
     status: 'RESOLVED',
     priority: 'LOW',
+    assignedUserId: null,
+    slaDueAt: '2024-05-01T04:15:00.000Z',
+    resolvedAt: '2024-04-29T06:45:00.000Z',
+    closedAt: null,
     createdAt: '2024-04-28T04:15:00.000Z',
     updatedAt: '2024-04-29T06:45:00.000Z',
+    version: 3,
   },
 ];
-
 export const visitors: Visitor[] = [
   {
     id: 'vis-301',

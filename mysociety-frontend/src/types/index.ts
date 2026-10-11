@@ -144,24 +144,101 @@ export interface Payment {
   reference: string;
 }
 
-export type ComplaintStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-export type ComplaintPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type ComplaintStatus =
+  | 'OPEN'
+  | 'UNDER_REVIEW'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'WAITING_FOR_RESIDENT'
+  | 'RESOLVED'
+  | 'CLOSED'
+  | 'REOPENED'
+  | 'REJECTED';
+export type ComplaintPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+/** Mirrors the operations service ComplaintResponse. */
 export interface Complaint {
   id: string;
-  societyId: string;
-  residentId: string;
-  unit: string;
-  category: 'PLUMBING' | 'ELECTRICAL' | 'HOUSEKEEPING' | 'SECURITY' | 'OTHER';
-  title: string;
+  complaintNumber: string;
+  category: string;
+  subject: string;
   description: string;
-  status: ComplaintStatus;
   priority: ComplaintPriority;
+  status: ComplaintStatus;
+  assignedUserId?: string | null;
+  slaDueAt?: string | null;
+  resolvedAt?: string | null;
+  closedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  version: number;
+}
+
+/** Mirrors the operations service CreateComplaintRequest. */
+export interface CreateComplaintInput {
+  category: string;
+  subcategory?: string;
+  subject: string;
+  description: string;
+  locationDetails?: string;
+  priority: ComplaintPriority;
+  unitId?: string;
+  preferredVisitAt?: string;
+  entryPermission: boolean;
 }
 
 export type VisitorStatus = 'EXPECTED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'DENIED';
+
+export type SocietyStatus = 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+
+/** Mirrors the society service SocietyResponse (the societies table). */
+export interface SocietyProfile {
+  id: string;
+  code: string;
+  name: string;
+  registrationNumber?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  stateName?: string | null;
+  postalCode?: string | null;
+  countryCode: string;
+  timezone: string;
+  currencyCode: string;
+  logoUrl?: string | null;
+  status: SocietyStatus;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+/** Mirrors the society service SocietyRequest. */
+export interface SocietyInput {
+  code: string;
+  name: string;
+  registrationNumber?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  stateName?: string;
+  postalCode?: string;
+  countryCode?: string;
+  timezone?: string;
+  currencyCode?: string;
+  logoUrl?: string;
+  status?: SocietyStatus;
+}
+
+export interface SocietyListParams {
+  q?: string;
+  status?: SocietyStatus | '';
+  page?: number;
+  size?: number;
+}
 
 export interface Visitor {
   id: string;
@@ -263,4 +340,72 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
   }
+}
+
+export type FinanceInvoiceStatus = 'DRAFT' | 'PUBLISHED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'ADJUSTED';
+
+export interface FinanceInvoice {
+  id: string;
+  unitId: string;
+  invoiceNumber: string;
+  billingPeriod: string;
+  invoiceDate: string;
+  dueDate: string;
+  currencyCode: string;
+  totalAmount: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  status: FinanceInvoiceStatus;
+}
+
+export interface FinancePayment {
+  id: string;
+  unitId: string;
+  paymentReference: string;
+  provider: string;
+  requestedAmount: number;
+  confirmedAmount: number;
+  refundedAmount: number;
+  status: string;
+  createdAt: string;
+  confirmedAt: string | null;
+}
+
+export interface ChargeHead {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  calculationType: string;
+  defaultAmount: number | null;
+  taxPercentage: number;
+  recurring: boolean;
+  active: boolean;
+}
+
+export interface ChargeHeadInput {
+  code: string;
+  name: string;
+  defaultAmount?: number | null;
+}
+
+export interface BillingRun {
+  id: string;
+  runNumber: string;
+  billingPeriod: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  status: string;
+  totalUnits: number;
+  totalAmount: number;
+  publishedAt: string | null;
+}
+
+export interface BillingRunInput {
+  runNumber: string;
+  billingPeriod: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
 }
