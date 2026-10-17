@@ -22,6 +22,15 @@ import type {
   AudienceRequest,
   AudienceResponse,
   Paginated,
+  SocietyInput,
+  SocietyListParams,
+  SocietyProfile,
+  FinanceInvoice,
+  FinancePayment,
+  ChargeHead,
+  ChargeHeadInput,
+  BillingRun,
+  BillingRunInput,
 } from '@/types';
 
 /** Both the mock and the HTTP implementation satisfy this contract. */
@@ -42,6 +51,62 @@ export type ApiClient = Omit<MockApi, 'login' | 'selectSociety'> & {
   getResidents: (params: GetResidentsParams, signal?: AbortSignal) => Promise<ResidentPageResponse>;
   selectSociety: (request: { loginContextToken: string; societyId: string }) => Promise<AuthenticatedLoginResponse>;
 };
+
+const operationsUrl = (path: string): string =>
+  import.meta.env.MODE === 'development' && import.meta.env.VITE_USE_API_PROXY !== 'false'
+    ? `${window.location.origin}/api/v1${path}`
+    : path;
+
+interface BackendInvoice {
+  id: string;
+  societyId: string;
+  unitId: string;
+  invoiceNumber: string;
+  billingPeriod: string;
+  dueDate: string;
+  totalAmount: number | string;
+  outstandingAmount: number | string;
+  status: string;
+}
+
+interface BackendPayment {
+  id: string;
+  societyId: string;
+  unitId: string;
+  paymentReference: string;
+  provider: string;
+  paymentMethod?: string | null;
+  requestedAmount: number | string;
+  confirmedAmount?: number | string | null;
+  confirmedAt?: string | null;
+  createdAt: string;
+}
+
+const toInvoice = (i: BackendInvoice): Invoice => {
+  const settled = i.status === 'PAID' || Number(i.outstandingAmount) <= 0;
+  const overdue = !settled && new Date(i.dueDate).getTime() < Date.now();
+  return {
+    id: i.id,
+    societyId: i.societyId,
+    residentId: i.unitId,
+    unit: i.invoiceNumber,
+    period: i.billingPeriod,
+    amount: Number(i.totalAmount),
+    dueDate: i.dueDate,
+    status: settled ? 'PAID' : overdue ? 'OVERDUE' : 'DUE',
+  };
+};
+
+const toPayment = (p: BackendPayment): Payment => ({
+  id: p.id,
+  societyId: p.societyId,
+  invoiceId: '',
+  residentId: p.unitId,
+  amount: Number(p.confirmedAmount) || Number(p.requestedAmount),
+  method: (p.paymentMethod ?? p.provider) as PaymentMethod,
+  paidAt: p.confirmedAt ?? p.createdAt,
+  reference: p.paymentReference,
+});
 
 const httpApi: ApiClient = {
   login: (email, password) =>
@@ -71,20 +136,89 @@ const httpApi: ApiClient = {
   },
   createResident: (input) =>
     request<Resident>('/residents', { method: 'POST', body: JSON.stringify(input) }),
-  listInvoices: () => request<Invoice[]>('/invoices'),
-  listPayments: () => request<Payment[]>('/payments'),
-  recordPayment: (invoiceId: string, method: PaymentMethod) =>
-    request<Payment>('/payments', {
+  listInvoices: async () => {
+    const page = await request<Paginated<BackendInvoice>>(operationsUrl('/invoices'), { query: { size: 100 } });
+    return page.items.map(toInvoice);
+  },
+  listPayments: async () => {
+    const page = await request<Paginated<BackendPayment>>(operationsUrl('/payments'), { query: { size: 100 } });
+    return page.items.map(toPayment);
+  },
+  recordPayment: async (invoiceId: string, method: PaymentMethod) => {
+    const invoice = await request<BackendInvoice>(operationsUrl(`/invoices/${encodeURIComponent(invoiceId)}`));
+    const amount = Number(invoice.outstandingAmount);
+    const payment = await request<BackendPayment>(operationsUrl('/payments'), {
       method: 'POST',
-      body: JSON.stringify({ invoiceId, method }),
+      headers: { 'Idempotency-Key': `ui-${invoiceId}-${Date.now()}` },
+      body: JSON.stringify({ unitId: invoice.unitId, provider: method, amount }),
+    });
+    await request(operationsUrl(`/payments/${payment.id}/allocations`), {
+      method: 'POST',
+      body: JSON.stringify({ invoiceId, amount }),
+    });
+    return { ...toPayment(payment), invoiceId };
+  },
+  listFinanceInvoices: async () => {
+    const page = await request<Paginated<FinanceInvoice>>(operationsUrl('/invoices'), { query: { size: 100, sort: 'dueDate,desc' } });
+    return page.items.map((i) => ({
+      ...i,
+      totalAmount: Number(i.totalAmount),
+      paidAmount: Number(i.paidAmount),
+      outstandingAmount: Number(i.outstandingAmount),
+    }));
+  },
+  listFinancePayments: async () => {
+    const page = await request<Paginated<FinancePayment>>(operationsUrl('/payments'), { query: { size: 100 } });
+    return page.items.map((p) => ({
+      ...p,
+      requestedAmount: Number(p.requestedAmount),
+      confirmedAmount: Number(p.confirmedAmount),
+      refundedAmount: Number(p.refundedAmount),
+    }));
+  },
+  payFinanceInvoice: async (invoiceId: string, provider: PaymentMethod) => {
+    await httpApi.recordPayment(invoiceId, provider);
+  },
+  listChargeHeads: async () => {
+    const page = await request<Paginated<ChargeHead>>(operationsUrl('/charge-heads'), { query: { size: 100 } });
+    return page.items;
+  },
+  createChargeHead: (input: ChargeHeadInput) =>
+    request<ChargeHead>(operationsUrl('/charge-heads'), { method: 'POST', body: JSON.stringify(input) }),
+  listBillingRuns: async () => {
+    const page = await request<Paginated<BillingRun>>(operationsUrl('/billing-runs'), { query: { size: 100 } });
+    return page.items.map((r) => ({ ...r, totalAmount: Number(r.totalAmount) }));
+  },
+  createBillingRun: (input: BillingRunInput) =>
+    request<BillingRun>(operationsUrl('/billing-runs'), { method: 'POST', body: JSON.stringify(input) }),
+  publishBillingRun: (id: string) =>
+    request<BillingRun>(operationsUrl(`/billing-runs/${encodeURIComponent(id)}/publish`), { method: 'POST' }),
+  listSocieties: (params: SocietyListParams = {}) =>
+    request<Paginated<SocietyProfile>>(operationsUrl('/societies'), {
+      query: { q: params.q ?? '', status: params.status ?? '', page: params.page ?? 0, size: params.size ?? 12 },
     }),
-  listComplaints: () => request<Complaint[]>('/complaints'),
+  getSociety: (id: string) => request<SocietyProfile>(operationsUrl(`/societies/${encodeURIComponent(id)}`)),
+  createSociety: (input: SocietyInput) =>
+    request<SocietyProfile>(operationsUrl('/societies'), { method: 'POST', body: JSON.stringify(input) }),
+  updateSociety: (id: string, input: SocietyInput) =>
+    request<SocietyProfile>(operationsUrl(`/societies/${encodeURIComponent(id)}`), {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+  listComplaints: async () => {
+    // request() already normalizes Spring pages into { items, total, ... }
+    const page = await request<{ items?: Complaint[]; content?: Complaint[] } | Complaint[]>(
+      operationsUrl('/complaints')
+    );
+    if (Array.isArray(page)) return page;
+    return page.items ?? page.content ?? [];
+  },
   createComplaint: (input) =>
-    request<Complaint>('/complaints', { method: 'POST', body: JSON.stringify(input) }),
-  updateComplaintStatus: (id: string, status: ComplaintStatus) =>
-    request<Complaint>(`/complaints/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
+    request<Complaint>(operationsUrl('/complaints'), { method: 'POST', body: JSON.stringify(input) }),
+  updateComplaintStatus: (id: string, status: ComplaintStatus, reason?: string) =>
+    request<Complaint>(operationsUrl(`/complaints/${id}/transitions`), {
+      method: 'POST',
+      body: JSON.stringify({ status, reason }),
     }),
   listVisitors: () => request<Visitor[]>('/visitors'),
   checkInVisitor: (id: string) => request<Visitor>(`/visitors/${id}/check-in`, { method: 'POST' }),

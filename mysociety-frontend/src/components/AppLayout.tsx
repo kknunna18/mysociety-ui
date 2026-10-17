@@ -20,7 +20,7 @@ const NAV: Array<{ to: string; label: string; icon: JSX.Element; roles?: Role[] 
   { to: '/dashboard', label: 'Dashboard', icon: <Dashboard /> },
   { to: '/societies', label: 'Society administration', icon: <Apartment />, roles: ['ADMIN', 'COMMITTEE', 'PLATFORM_ADMIN'] },
   { to: '/residents', label: 'Residents & households', icon: <Group />, roles: ['ADMIN', 'COMMITTEE', 'RESIDENT'] },
-  { to: '/invoices', label: 'Finance', icon: <Payments />, roles: ['ADMIN', 'COMMITTEE', 'ACCOUNTANT', 'RESIDENT'] },
+  { to: '/invoices', label: 'Finance', icon: <Payments />, roles: ['ADMIN', 'COMMITTEE', 'ACCOUNTANT', 'RESIDENT', 'PLATFORM_ADMIN'] },
   { to: '/complaints', label: 'Operations', icon: <Build /> },
   { to: '/visitors', label: 'Visitors & facilities', icon: <Security /> },
   { to: '/bookings', label: 'Bookings', icon: <CalendarMonth /> },

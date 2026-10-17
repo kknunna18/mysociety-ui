@@ -10,6 +10,9 @@ import { WorkflowPage } from '@/pages/WorkflowPage';
 import ComplaintsPage from '@/pages/ComplaintsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import NoticesPage from '@/pages/NoticesPageImpl';
+import FinancePage from '@/pages/FinancePage';
+import SocietiesPage from '@/pages/SocietiesPage';
+import SocietyDetailPage from '@/pages/SocietyDetailPage';
 
 const module = (title: string, description: string) => <WorkflowPage title={title} description={description} />;
 export default function App() {
@@ -40,8 +43,8 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
 
-        <Route path="/societies" element={module('Societies', 'Manage society profiles, buildings, units, contacts, and active status.')} />
-        <Route path="/societies/:societyId" element={module('Society details', 'Review society configuration and membership.')} />
+        <Route path="/societies" element={<SocietiesPage />} />
+        <Route path="/societies/:societyId" element={<SocietyDetailPage />} />
 
         <Route path="/buildings" element={module('Buildings', 'Manage wings, floors, codes, unit counts, and status.')} />
         <Route path="/units" element={module('Units', 'Manage unit occupancy, ownership, residents, and parking.')} />
@@ -51,10 +54,10 @@ export default function App() {
         <Route path="/residents/:residentId" element={module('Resident profile', 'Review contact details, household relationships, and history.')} />
         <Route path="/residents/:residentId/edit" element={module('Edit resident', 'Update resident profile details.')} />
 
-        <Route path="/charge-heads" element={module('Charge heads', 'Set up maintenance and one-time charge heads.')} />
-        <Route path="/billing-runs" element={module('Billing runs', 'Review billing progress and generated invoices.')} />
-        <Route path="/invoices" element={module('Invoices', 'Review invoices, adjustments, and payment status.')} />
-        <Route path="/payments" element={module('Payments', 'Record and reconcile payments with idempotent processing.')} />
+        <Route path="/charge-heads" element={<FinancePage />} />
+        <Route path="/billing-runs" element={<FinancePage />} />
+        <Route path="/invoices" element={<FinancePage />} />
+        <Route path="/payments" element={<FinancePage />} />
         <Route path="/receipts" element={module('Receipts', 'View receipts, refunds, and reconciliation details.')} />
 
         <Route path="/complaints" element={<ComplaintsPage />} />

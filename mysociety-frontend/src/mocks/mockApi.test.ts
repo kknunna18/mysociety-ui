@@ -3,6 +3,18 @@ import { mockApi } from '@/mocks/mockApi';
 import { ApiError } from '@/types';
 
 describe('mockApi', () => {
+  it('lists, creates and edits societies', async () => {
+    const page = await mockApi.listSocieties({ q: 'lake' });
+    expect(page.items.map((s) => s.code)).toEqual(['LAKE_VIEW']);
+
+    const created = await mockApi.createSociety({ code: 'new_homes', name: 'New Homes', city: 'Pune' });
+    expect(created).toMatchObject({ code: 'NEW_HOMES', status: 'ACTIVE', currencyCode: 'INR', version: 0 });
+    await expect(mockApi.createSociety({ code: 'NEW_HOMES', name: 'Dup' })).rejects.toBeInstanceOf(ApiError);
+
+    const updated = await mockApi.updateSociety(created.id, { code: 'NEW_HOMES', name: 'New Homes II', status: 'TRIAL' });
+    expect(updated).toMatchObject({ name: 'New Homes II', status: 'TRIAL', version: 1 });
+  });
+
   it('authenticates a seeded user and rejects a bad password', async () => {
     const session = await mockApi.login('admin@mysociety.test', 'admin123');
     expect(session.user.role).toBe('ADMIN');

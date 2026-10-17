@@ -47,6 +47,8 @@ export async function request<T>(
         ? response.data
         : response?.data && typeof response.data === 'object' && 'message' in response.data
           ? String(response.data.message)
+          : response?.data && typeof response.data === 'object' && 'detail' in response.data
+            ? String((response.data as { detail: unknown }).detail)
           : response?.statusText || 'Request failed';
     throw new ApiError(response?.status || 0, message);
   }
