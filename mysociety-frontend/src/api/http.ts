@@ -15,7 +15,7 @@ export async function request<T>(
       'X-Society-Id': societyId(),
       ...(init.headers as Record<string, string> | undefined),
     };
-    const response = await axiosClient.request<T>({
+    const response = await axiosClient.request<any>({
       url: path,
       method: init.method,
       data: init.body ? JSON.parse(init.body as string) : undefined,
@@ -23,7 +23,21 @@ export async function request<T>(
       signal: init.signal ?? undefined,
       headers,
     });
-    return response.data;
+
+    // Normalize Spring Page responses (common backend pattern) to the frontend Paginated<T> shape
+    const raw = response.data;
+    if (raw && typeof raw === 'object' && Array.isArray(raw.content)) {
+      const content = raw.content as any[];
+      const normalized = {
+        items: content,
+        total: raw.totalElements ?? raw.total ?? content.length,
+        page: raw.number ?? (raw.page?.number ?? 0),
+        pageSize: raw.size ?? (raw.page?.size ?? content.length),
+      } as unknown as T;
+      return normalized;
+    }
+
+    return response.data as T;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     const response = (error as { response?: { status?: number; data?: unknown; statusText?: string } })
@@ -33,6 +47,8 @@ export async function request<T>(
         ? response.data
         : response?.data && typeof response.data === 'object' && 'message' in response.data
           ? String(response.data.message)
+          : response?.data && typeof response.data === 'object' && 'detail' in response.data
+            ? String((response.data as { detail: unknown }).detail)
           : response?.statusText || 'Request failed';
     throw new ApiError(response?.status || 0, message);
   }

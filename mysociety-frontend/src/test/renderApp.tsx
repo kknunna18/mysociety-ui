@@ -1,7 +1,10 @@
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from '@mui/material';
 import { AuthProvider } from '@/context/AuthProvider';
+import { theme } from '@/theme';
 import type { User } from '@/types';
 
 export const ADMIN_USER: User = {
@@ -19,9 +22,14 @@ export function signIn(user: User = ADMIN_USER): void {
 }
 
 export function renderWithProviders(ui: ReactElement, { route = '/' } = {}) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <MemoryRouter initialEntries={[route]}>
-      <AuthProvider>{ui}</AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={theme}>
+          <AuthProvider>{ui}</AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </MemoryRouter>
   );
 }

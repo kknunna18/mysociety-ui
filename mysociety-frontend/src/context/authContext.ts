@@ -13,6 +13,8 @@ export interface AuthContextValue {
   loginContextExpiresAt: number | null;
   login: (username: string, password: string) => Promise<LoginResponse>;
   selectSociety: (societyId: string) => Promise<void>;
+  // Switch society while authenticated (server should return a new token and activeSociety)
+  switchSociety: (societyId: string) => Promise<void>;
   logout: () => void;
 }
 

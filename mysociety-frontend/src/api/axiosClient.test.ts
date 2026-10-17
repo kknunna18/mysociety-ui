@@ -67,7 +67,7 @@ describe('axiosClient authentication', () => {
     };
     axiosClient.defaults.adapter = adapter;
 
-    await axiosClient.post(`${window.location.origin}/identity/api/auth/login`, {});
+    await axiosClient.post(`${window.location.origin}/api/v1/auth/login`, {});
 
     expect(requestConfig?.headers.get('Authorization')).toBeUndefined();
   });
@@ -82,7 +82,7 @@ describe('axiosClient authentication', () => {
     axiosClient.defaults.adapter = adapter;
 
     await axiosClient.get(
-      `${window.location.origin}/identity/api/v1/societies/society-1/residents`
+      `${window.location.origin}/api/v1/societies/society-1/residents`
     );
 
     expect(requestConfig?.headers.get('Authorization')).toBe('Bearer test-token');

@@ -1,47 +1,84 @@
+import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import AuditPage from '@/pages/AuditPage';
-import BillingPage from '@/pages/BillingPage';
-import BookingsPage from '@/pages/BookingsPage';
-import ComplaintsPage from '@/pages/ComplaintsPage';
 import DashboardPage from '@/pages/DashboardPage';
 import LoginPage from '@/pages/LoginPage';
-import NotFoundPage from '@/pages/NotFoundPage';
-import PaymentsPage from '@/pages/PaymentsPage';
-import ResidentsPage from '@/pages/ResidentsPage';
-import VisitorsPage from '@/pages/VisitorsPage';
 import SelectSocietyPage from '@/pages/SelectSocietyPage';
+import { SimpleAuthPage, SessionExpiredPage, UnauthorizedPage } from '@/pages/AuthSupportPages';
+import { WorkflowPage } from '@/pages/WorkflowPage';
+import ComplaintsPage from '@/pages/ComplaintsPage';
+import NotFoundPage from '@/pages/NotFoundPage';
+import NoticesPage from '@/pages/NoticesPageImpl';
+import FinancePage from '@/pages/FinancePage';
+import SocietiesPage from '@/pages/SocietiesPage';
+import SocietyDetailPage from '@/pages/SocietyDetailPage';
 
+const module = (title: string, description: string) => <WorkflowPage title={title} description={description} />;
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/select-society" element={<SelectSocietyPage />} />
       <Route
-        element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/residents" element={<ResidentsPage />} />
-        <Route path="/billing" element={<BillingPage />} />
-        <Route path="/payments" element={<PaymentsPage />} />
+        path="/forgot-password"
+        element={<SimpleAuthPage title="Reset your password" description="Enter your email and we will send password reset instructions." action="Send reset link" />}
+      />
+      <Route
+        path="/reset-password"
+        element={<SimpleAuthPage title="Choose a new password" description="Set a strong password to secure your account." action="Continue" />}
+      />
+      <Route
+        path="/verify-mfa"
+        element={<SimpleAuthPage title="Verify your identity" description="Enter the one-time code from your authenticator application." action="Continue" />}
+      />
+      <Route
+        path="/accept-invitation"
+        element={<SimpleAuthPage title="Accept your invitation" description="Confirm your membership details to join this society." action="Continue" />}
+      />
+      <Route path="/select-society" element={<SelectSocietyPage />} />
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/session-expired" element={<SessionExpiredPage />} />
+
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+
+        <Route path="/societies" element={<SocietiesPage />} />
+        <Route path="/societies/:societyId" element={<SocietyDetailPage />} />
+
+        <Route path="/buildings" element={module('Buildings', 'Manage wings, floors, codes, unit counts, and status.')} />
+        <Route path="/units" element={module('Units', 'Manage unit occupancy, ownership, residents, and parking.')} />
+
+        <Route path="/residents" element={module('Residents', 'Manage household profiles, ownership, vehicles, and move history.')} />
+        <Route path="/residents/new" element={module('New resident', 'Add a resident with household and unit details.')} />
+        <Route path="/residents/:residentId" element={module('Resident profile', 'Review contact details, household relationships, and history.')} />
+        <Route path="/residents/:residentId/edit" element={module('Edit resident', 'Update resident profile details.')} />
+
+        <Route path="/charge-heads" element={<FinancePage />} />
+        <Route path="/billing-runs" element={<FinancePage />} />
+        <Route path="/invoices" element={<FinancePage />} />
+        <Route path="/payments" element={<FinancePage />} />
+        <Route path="/receipts" element={module('Receipts', 'View receipts, refunds, and reconciliation details.')} />
+
         <Route path="/complaints" element={<ComplaintsPage />} />
-        <Route path="/visitors" element={<VisitorsPage />} />
-        <Route path="/bookings" element={<BookingsPage />} />
-        <Route
-          path="/audit"
-          element={
-            <ProtectedRoute roles={['ADMIN', 'COMMITTEE']}>
-              <AuditPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/dashboard" element={<Navigate to="/" replace />} />
+        <Route path="/work-orders" element={module('Work orders', 'Assign vendors and manage work order progress.')} />
+
+        <Route path="/visitors" element={module('Visitors', 'Approve, search, check in, and check out visitors.')} />
+        <Route path="/facilities" element={module('Facilities', 'Manage facility availability and reservation rules.')} />
+        <Route path="/bookings" element={module('Bookings', 'Review bookings, conflicts, cancellations, and availability.')} />
+
+        <Route path="/notices" element={<React.Suspense fallback={null}><NoticesPage /></React.Suspense>} />
+        <Route path="/documents" element={module('Documents', 'Manage shared documents and attachments.')} />
+        <Route path="/notifications" element={module('Notifications', 'Review templates and notification delivery status.')} />
+
+        <Route path="/reports" element={module('Reports', 'Run role-appropriate reports with filters and export options.')} />
+        <Route path="/exports" element={module('Exports', 'Track export requests, statuses, and downloads.')} />
+        <Route path="/audit-events" element={module('Audit events', 'Search read-only audit history.')} />
+
+        <Route path="/profile" element={module('Profile', 'Update your profile and communication preferences.')} />
+        <Route path="/settings" element={module('Settings', 'Manage role-authorized society settings and notification preferences.')} />
       </Route>
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

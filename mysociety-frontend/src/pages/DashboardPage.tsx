@@ -1,265 +1,31 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { AccountBalanceWallet, AssignmentLate, Groups, PersonSearch, Security, Today } from '@mui/icons-material';
+import { Alert, Box, Card, CardContent, CircularProgress, Grid, Stack, Typography } from '@mui/material';
+import { Bar, BarChart, CartesianGrid, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '@/api/client';
-import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/hooks/useAuth';
-import { formatCurrency } from '@/utils/format';
-import type { DashboardSummary } from '@/types';
 
-const friendlyError = 'Dashboard data is temporarily unavailable. Please try again.';
-
-function SummaryCard({
-  icon,
-  title,
-  value,
-  support,
-  tone,
-  to,
-}: {
-  icon: string;
-  title: string;
-  value: string | number;
-  support: string;
-  tone: string;
-  to: string;
-}) {
-  return (
-    <article className={`summary-card summary-card--${tone}`}>
-      <div className="summary-card__top">
-        <span className="summary-card__icon" aria-hidden="true">
-          {icon}
-        </span>
-        <span>{title}</span>
-      </div>
-      <strong className="summary-card__value">{value}</strong>
-      <p>{support}</p>
-      <Link to={to}>
-        View details <span aria-hidden="true">→</span>
-      </Link>
-    </article>
-  );
-}
-
+const analytics = [{ month: 'Apr', billed: 82000, collected: 73000 }, { month: 'May', billed: 84000, collected: 80500 }, { month: 'Jun', billed: 86000, collected: 84200 }, { month: 'Jul', billed: 88000, collected: 86500 }];
+const paymentMix = [{ name: 'Online', value: 65 }, { name: 'UPI', value: 25 }, { name: 'Cash', value: 10 }];
+const labels = { ADMIN: 'Administrator', COMMITTEE: 'Committee member', RESIDENT: 'Resident', SECURITY: 'Security guard', ACCOUNTANT: 'Accountant', FACILITY_MANAGER: 'Facility manager', VENDOR: 'Vendor / Technician', PLATFORM_ADMIN: 'Platform administrator' };
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data, error, loading, reload } = useAsync<DashboardSummary>(() => api.getSummary());
-  const [period, setPeriod] = useState<6 | 12>(6);
-  const firstName = user?.name?.split(' ')[0] || 'there';
-  useEffect(() => {
-    if (error) console.error('Dashboard summary request failed', error);
-  }, [error]);
-
-  if (loading)
-    return (
-      <div className="dashboard-skeleton" role="status" aria-live="polite">
-        <span>Loading dashboard...</span>
-        <div className="skeleton-grid">
-          {[1, 2, 3, 4].map((item) => (
-            <i key={item} />
-          ))}
-        </div>
-      </div>
-    );
-  if (error)
-    return (
-      <div className="dashboard-error" role="alert" aria-live="assertive">
-        <span className="dashboard-error__icon" aria-hidden="true">
-          !
-        </span>
-        <div>
-          <strong>{friendlyError}</strong>
-          <button type="button" onClick={reload}>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  if (!data)
-    return (
-      <p className="dashboard-empty" role="status">
-        No dashboard data is available yet.
-      </p>
-    );
-
-  const pending = Math.max(data.duesAmount, 0);
-  const collected = Math.max(data.collectedThisMonth, 0);
-  const total = pending + collected || 1;
-  const highPriority = data.openComplaints > 0 ? 1 : 0;
-  const expectedVisitors = Math.max(data.visitorsToday - 1, 0);
-
-  return (
-    <div className="dashboard">
-      <header className="dashboard-heading">
-        <div>
-          <h1>Good morning, {firstName}</h1>
-          <p>Here's what's happening in Green Valley Apartments today.</p>
-        </div>
-        <button className="primary quick-action-button" type="button">
-          + <span>Quick action</span>
-        </button>
-      </header>
-      <section className="summary-grid" aria-label="Society summary">
-        <SummaryCard
-          icon="▣"
-          title="Outstanding dues"
-          value={formatCurrency(data.duesAmount)}
-          support={`${data.residents} households`}
-          tone="danger"
-          to="/billing"
-        />
-        <SummaryCard
-          icon="△"
-          title="Open complaints"
-          value={data.openComplaints}
-          support={`${highPriority} high priority`}
-          tone="warning"
-          to="/complaints"
-        />
-        <SummaryCard
-          icon="♧"
-          title="Visitors today"
-          value={data.visitorsToday}
-          support={`${expectedVisitors} expected`}
-          tone="success"
-          to="/visitors"
-        />
-        <SummaryCard
-          icon="□"
-          title="Facility bookings"
-          value={data.upcomingBookings}
-          support="This week"
-          tone="info"
-          to="/bookings"
-        />
-      </section>
-      <div className="dashboard-middle">
-        <section className="dashboard-card collection-card">
-          <div className="dashboard-card__heading">
-            <h2>Collection overview</h2>
-            <div className="period-toggle">
-              <button
-                className={period === 6 ? 'active' : ''}
-                type="button"
-                onClick={() => setPeriod(6)}
-              >
-                6 months
-              </button>
-              <button
-                className={period === 12 ? 'active' : ''}
-                type="button"
-                onClick={() => setPeriod(12)}
-              >
-                12 months
-              </button>
-            </div>
-          </div>
-          <div className="collection-chart" aria-label={`Collection overview for ${period} months`}>
-            <div className="chart-axis">
-              <span>{formatCurrency(total)}</span>
-              <span>{formatCurrency(Math.round(total / 2))}</span>
-              <span>₹0</span>
-            </div>
-            <div className="chart-bars">
-              <div className="chart-bar">
-                <i style={{ height: `${Math.max((collected / total) * 100, 4)}%` }} />
-                <span>Collected</span>
-              </div>
-              <div className="chart-bar chart-bar--pending">
-                <i style={{ height: `${Math.max((pending / total) * 100, 4)}%` }} />
-                <span>Pending</span>
-              </div>
-            </div>
-          </div>
-          <div className="chart-legend">
-            <span>
-              <i className="legend-collected" />
-              Collected {formatCurrency(collected)}
-            </span>
-            <span>
-              <i className="legend-pending" />
-              Pending {formatCurrency(pending)}
-            </span>
-          </div>
-        </section>
-        <section className="dashboard-card">
-          <div className="dashboard-card__heading">
-            <h2>Quick actions</h2>
-          </div>
-          <div className="quick-actions">
-            {[
-              { label: 'Add resident', to: '/residents', icon: '+' },
-              { label: 'Create bill', to: '/billing', icon: '▤' },
-              { label: 'Record payment', to: '/payments', icon: '▣' },
-              { label: 'Add visitor', to: '/visitors', icon: '♧' },
-              { label: 'Book facility', to: '/bookings', icon: '□' },
-              { label: 'Raise complaint', to: '/complaints', icon: '!' },
-            ].map((action) => (
-              <Link to={action.to} key={action.label}>
-                <strong aria-hidden="true">{action.icon}</strong>
-                <span>{action.label}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      </div>
-      <div className="dashboard-bottom">
-        <section className="dashboard-card activity-card">
-          <div className="dashboard-card__heading">
-            <h2>Recent activity</h2>
-          </div>
-          {data.collectedThisMonth > 0 ? (
-            <ul className="activity-list">
-              <li>
-                <span className="activity-icon activity-icon--success">₹</span>
-                <div>
-                  <strong>Payment received</strong>
-                  <small>Collection recorded for the society</small>
-                </div>
-                <time>Today</time>
-              </li>
-              <li>
-                <span className="activity-icon activity-icon--warning">△</span>
-                <div>
-                  <strong>
-                    {data.openComplaints ? 'New complaint raised' : 'No open complaints'}
-                  </strong>
-                  <small>
-                    {data.openComplaints
-                      ? `${data.openComplaints} complaints need attention`
-                      : 'Everything is up to date'}
-                  </small>
-                </div>
-                <time>Today</time>
-              </li>
-              <li>
-                <span className="activity-icon activity-icon--info">□</span>
-                <div>
-                  <strong>Facility bookings updated</strong>
-                  <small>{data.upcomingBookings} upcoming bookings</small>
-                </div>
-                <time>Today</time>
-              </li>
-            </ul>
-          ) : (
-            <p className="dashboard-empty">No recent activity to display.</p>
-          )}
-          <Link className="card-link" to="/audit">
-            View all activity <span aria-hidden="true">→</span>
-          </Link>
-        </section>
-        <section className="dashboard-card announcements-card">
-          <div className="dashboard-card__heading">
-            <h2>Announcements</h2>
-          </div>
-          <div className="dashboard-empty">
-            <span aria-hidden="true">♢</span>
-            <p>No announcements have been published yet.</p>
-          </div>
-          <a className="card-link" href="#announcements">
-            View all announcements <span aria-hidden="true">→</span>
-          </a>
-        </section>
-      </div>
-    </div>
-  );
+  const { data, isLoading, isError } = useQuery({ queryKey: ['dashboard-summary'], queryFn: () => api.getSummary() });
+  if (isLoading) return <Box textAlign="center" p={8}><CircularProgress aria-label="Loading dashboard" /></Box>;
+  if (isError || !data) return <Alert severity="error">We could not load the dashboard. Please try again.</Alert>;
+  const resident = user?.role === 'RESIDENT';
+  const security = user?.role === 'SECURITY';
+  const cards = security ? [
+    ['Expected visitors', data.visitorsToday, <PersonSearch />], ['Visitors inside', data.visitorsToday, <Security />], ['Completed check-outs', 18, <Today />], ['Rejected / expired', 2, <AssignmentLate />],
+  ] : resident ? [
+    ['Outstanding amount', `₹${data.duesAmount.toLocaleString()}`, <AccountBalanceWallet />], ['Open complaints', data.openComplaints, <AssignmentLate />], ['Upcoming bookings', data.upcomingBookings, <Today />], ['Latest notices', 3, <Groups />],
+  ] : [
+    ['Occupied units', `${data.residents} / 120`, <Groups />], ['Residents', data.residents, <Groups />], ['Collection rate', '96%', <AccountBalanceWallet />], ['Open complaints', data.openComplaints, <AssignmentLate />], ['Visitors inside', data.visitorsToday, <Security />], ['Today’s bookings', data.upcomingBookings, <Today />],
+  ];
+  return <Stack spacing={3}>
+    <Box><Typography variant="h4">Good day, {user?.name?.split(' ')[0] ?? 'Member'}</Typography><Typography color="text.secondary">{labels[user?.role ?? 'RESIDENT']} overview for your active society.</Typography></Box>
+    <Grid container spacing={2}>{cards.map(([label, value, icon]) => <Grid item xs={12} sm={6} lg={4} key={String(label)}><Card><CardContent><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography color="text.secondary" variant="body2">{label}</Typography><Typography variant="h4">{value}</Typography></Box><Box color="primary.main">{icon}</Box></Stack></CardContent></Card></Grid>)}</Grid>
+    {!resident && !security && <Grid container spacing={2}><Grid item xs={12} lg={8}><Card><CardContent><Typography variant="h6" mb={2}>Monthly billed vs. collected</Typography><ResponsiveContainer width="100%" height={280}><BarChart data={analytics}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip /><Legend /><Bar dataKey="billed" fill="#1F4E78" /><Bar dataKey="collected" fill="#2E7D32" /></BarChart></ResponsiveContainer></CardContent></Card></Grid><Grid item xs={12} lg={4}><Card><CardContent><Typography variant="h6" mb={2}>Payment methods</Typography><ResponsiveContainer width="100%" height={280}><PieChart><Pie data={paymentMix} dataKey="value" nameKey="name" fill="#2E74B5" label /><Tooltip /></PieChart></ResponsiveContainer></CardContent></Card></Grid></Grid>}
+    <Card><CardContent><Typography variant="h6">Quick actions</Typography><Typography color="text.secondary">Create a complaint, review collections, approve visitors, or publish a community notice from the navigation.</Typography></CardContent></Card>
+  </Stack>;
 }

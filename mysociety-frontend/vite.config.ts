@@ -5,7 +5,7 @@ import path from 'node:path';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const proxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:8080';
+    const proxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:8081';
 
   return {
     plugins: [react()],
@@ -22,10 +22,7 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
         },
-        '/identity': {
-          target: proxyTarget,
-          changeOrigin: true,
-        },
+        // '/identity' proxy removed per request
       },
     },
     preview: {
